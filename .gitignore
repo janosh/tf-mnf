@@ -1,0 +1,3 @@
+*.pyc
+logs
+.ipynb_checkpoints
