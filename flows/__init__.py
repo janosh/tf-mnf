@@ -1,6 +1,6 @@
 import tensorflow as tf
 
-from flows.maf import IAF, MAF  # noqa
+from flows.maf import IAF, MAF, TFIAF, TFMAF  # noqa
 from flows.planar import PlanarFlow  # noqa
 from flows.rnvp import RNVP  # noqa
 
