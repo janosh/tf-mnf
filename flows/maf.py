@@ -13,20 +13,22 @@ class MAF(tf.Module):
     (Jun 2018) https://arxiv.org/abs/1705.07057
     """
 
-    def __init__(self, dim, parity, net=None, h_sizes=[24]):
+    def __init__(self, parity, net=None, h_sizes=[24]):
         super().__init__()
-        self.dim = dim  # The flow's input and output dimensionality.
         self.parity = parity
-        # Uses a 2-layer auto-regressive MLP by default.
-        self.net = net or MADE(dim, 2 * dim, h_sizes, shuffle=False)
+        # Uses a 2-layer auto-regressive MLP with 2 outputs by default.
+        # Custom nets must also have 2 outputs, one for log scale s and one for shift t.
+        self.net = net or MADE(n_outputs=2, h_sizes=h_sizes)
 
     def forward(self, z):
+        batch_size, dim = z.shape  # dim: the flow's input and output dimensionality.
         x = tf.zeros_like(z)
-        log_dets = tf.zeros(z.shape[0])
-        # Reverse order, so if we stack MAFs, all dimensions are transformed.
+        log_dets = tf.zeros(batch_size)
+        # Reverse order, so that if we chain MAFs, we spread expressivity equally
+        # over all dimensions.
         z = tf.reverse(z, axis=[1]) if self.parity else z
         # x has to be decoded sequentially, one element at a time.
-        for i in range(self.dim):
+        for i in range(dim):
             s, t = self.net(x)
             x[:, i] = (z[:, i] - t[:, i]) * tf.exp(-s[:, i])
             log_dets += -s[:, i]
