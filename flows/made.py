@@ -27,7 +27,7 @@ class MaskedDense(tf.keras.layers.Dense):
         return tf.matmul(x, self.mask * w) + b
 
 
-class MADE(tf.keras.Sequential):
+class MADE(tf.keras.layers.Layer):
     """Masked Autoencoder for Distribution Estimation masks the autoencoder’s
     parameters to respect autoregressive constraints: each input is reconstructed
     only from previous inputs in a given ordering. Constrained this way, the
@@ -38,7 +38,7 @@ class MADE(tf.keras.Sequential):
     Germain et al. (June 2015) https://arxiv.org/abs/1502.03509
     """
 
-    def __init__(self, n_in, n_out, h_sizes=[], num_masks=1, shuffle=True, **kwargs):
+    def __init__(self, n_outputs=1, h_sizes=[], num_masks=1, shuffle=False, **kwargs):
         """
         n_in (int): number of inputs
         h_sizes (list of ints): number of units in hidden layers
@@ -52,22 +52,22 @@ class MADE(tf.keras.Sequential):
         num_masks: can be used to train ensemble over orderings/connections
         shuffle: Whether to apply random permutations to ordering of the inputs.
         """
-        assert n_out % n_in == 0, "n_out must be integer multiple of n_in"
-        self.n_outputs = n_out // n_in  # Integer division to avoid type errors.
-        self.n_in = n_in
+        super().__init__(**kwargs)
+        self.n_outputs = n_outputs
         self.h_sizes = h_sizes
-
-        # define a simple MLP neural net
-        layers = [tf.keras.Input(n_in)]
-        for size in h_sizes + [n_out]:
-            layers.extend([MaskedDense(size), tf.keras.layers.ReLU()])
-        layers.pop()  # pop the last ReLU for the output layer
-        super().__init__(layers, **kwargs)
-
         # Seeds for orders/connectivities of the model ensemble.
         self.shuffle = shuffle
         self.num_masks = num_masks
-        self.seed = 0  # for cycling through num_masks orderings
+        self.seed = 0  # For cycling through num_masks orderings.
+
+    def build(self, input_shape):
+        self.n_in = input_shape[-1]
+        # Simple feed-forward net built with masked layers to make it autoregressive.
+        layers = []
+        for size in self.h_sizes + [self.n_in * self.n_outputs]:
+            layers.extend([MaskedDense(size), tf.keras.layers.ReLU()])
+        layers.pop()  # Pop the last ReLU to get an affine output layer.
+        self.net = tf.keras.Sequential(layers)
 
         self.m = {}
         self.set_masks()  # Build the initial self.m connectivity
@@ -75,7 +75,7 @@ class MADE(tf.keras.Sequential):
         # could get memory expensive for large numbers of masks.
 
     def call(self, x):
-        return tf.split(super().call(x), self.n_outputs, axis=-1)
+        return tf.split(self.net(x), self.n_outputs, axis=-1)
 
     def set_masks(self):
         if self.m and self.num_masks == 1:
@@ -107,6 +107,6 @@ class MADE(tf.keras.Sequential):
             masks[-1] = np.concatenate([masks[-1]] * self.n_outputs, axis=1)
 
         # Update the masks in all MaskedDense layers.
-        layers = [l for l in self.layers if isinstance(l, MaskedDense)]
+        layers = [l for l in self.net.layers if isinstance(l, MaskedDense)]
         for l, m in zip(layers, masks):
             l.set_mask(m)
