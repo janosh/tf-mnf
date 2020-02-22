@@ -29,8 +29,8 @@ class Conv2DNF(tf.keras.layers.Layer):
         use_z=True,
         prior_var_w=1,
         prior_var_b=1,
-        flow_dim_h=50,
-        thres_std=1,
+        flow_h_sizes=[50],
+        max_std=1,
         std_init=1,
         **kwargs,
     ):
@@ -41,9 +41,9 @@ class Conv2DNF(tf.keras.layers.Layer):
         )
         self.padding = padding
         self.strides = strides
-        self.thres_std = thres_std
+        self.max_std = max_std
         self.std_init = std_init
-        self.flow_dim_h = flow_dim_h
+        self.flow_h_sizes = flow_h_sizes
         self.learn_p = learn_p
         self.prior_var_w = prior_var_w
         self.prior_var_b = prior_var_b
@@ -55,7 +55,7 @@ class Conv2DNF(tf.keras.layers.Layer):
         stack_size = input_shape[-1]  # = 1 for black & white images like MNIST
         std_init, mean_init = self.std_init, -9
         n_rows, n_cols = self.kernel_size
-        flow_dim_h, n_filters = self.flow_dim_h, self.n_filters
+        n_filters = self.n_filters
         self.input_dim = n_cols * stack_size * n_rows
         W_shape = (n_rows, n_cols, stack_size, n_filters)
 
@@ -83,12 +83,12 @@ class Conv2DNF(tf.keras.layers.Layer):
         )
 
         r_flows = [
-            IAF(parity=i % 2, h_sizes=[flow_dim_h]) for i in range(self.n_flows_r)
+            IAF(parity=i % 2, h_sizes=self.flow_h_sizes) for i in range(self.n_flows_r)
         ]
         self.flow_r = NormalizingFlow(r_flows)
 
         q_flows = [
-            IAF(parity=i % 2, h_sizes=[flow_dim_h]) for i in range(self.n_flows_q)
+            IAF(parity=i % 2, h_sizes=self.flow_h_sizes) for i in range(self.n_flows_q)
         ]
         self.flow_q = NormalizingFlow(q_flows)
 
@@ -108,9 +108,9 @@ class Conv2DNF(tf.keras.layers.Layer):
         return z_samples, log_dets
 
     def get_mean_var(self, x):
-        std_w = tf.clip_by_value(tf.exp(self.log_std_W), 0, self.thres_std)
+        std_w = tf.clip_by_value(tf.exp(self.log_std_W), 0, self.max_std)
         var_w = tf.square(std_w)
-        var_b = tf.clip_by_value(tf.exp(self.log_var_bias), 0, self.thres_std ** 2)
+        var_b = tf.clip_by_value(tf.exp(self.log_var_bias), 0, self.max_std ** 2)
 
         conv_args = {"strides": self.strides, "padding": self.padding}
 

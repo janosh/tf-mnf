@@ -21,8 +21,8 @@ parser.add_argument("-use_z", action="store_false")
 parser.add_argument("-learn_p", action="store_true")
 parser.add_argument("-seed", type=int, default=1)
 parser.add_argument("-learning_rate", type=float, default=0.001)
-parser.add_argument("-thres_std", type=float, default=1)
-parser.add_argument("-flow_dim_h", type=int, default=50)
+parser.add_argument("-max_std", type=float, default=1)
+parser.add_argument("-flow_h_sizes", type=int, default=[50])
 parser.add_argument("-test_samples", type=int, default=50)
 parser.add_argument("-std_init", type=float, default=1e-2)
 flags, _ = parser.parse_known_args()
@@ -49,8 +49,8 @@ model = NFFeedForward(
     n_flows_r=flags.n_flows_r,
     use_z=flags.use_z,
     learn_p=flags.learn_p,
-    thres_std=flags.thres_std,
-    flow_dim_h=flags.flow_dim_h,
+    max_std=flags.max_std,
+    flow_h_sizes=flags.flow_h_sizes,
     std_init=flags.std_init,
 )
 optimizer = tf.optimizers.Adam(learning_rate=1e-3)

@@ -24,8 +24,8 @@ class DenseNF(tf.keras.layers.Layer):
         use_z=True,
         prior_var_w=1,
         prior_var_b=1,
-        flow_dim_h=50,
-        thres_std=1,
+        flow_h_sizes=[50],
+        max_std=1,
         std_init=1,
         **kwargs,
     ):
@@ -33,24 +33,23 @@ class DenseNF(tf.keras.layers.Layer):
         self.learn_p = learn_p
         self.prior_var_w = prior_var_w
         self.prior_var_b = prior_var_b
-        self.thres_std = thres_std
+        self.max_std = max_std
         self.std_init = std_init
         self.n_flows_q = n_flows_q
         self.n_flows_r = n_flows_r
         self.use_z = use_z
-        self.flow_dim_h = flow_dim_h
+        self.flow_h_sizes = flow_h_sizes
         super().__init__(**kwargs)
 
     def build(self, input_shape):
         n_in = self.n_in = input_shape[-1]
-        n_out, flow_dim_h = self.n_out, self.flow_dim_h
         std_init, mean_init = self.std_init, -9
 
         glorot = tf.keras.initializers.GlorotNormal()
-        self.mean_W = tf.Variable(glorot([n_in, n_out]))
-        self.log_std_W = tf.Variable(glorot([n_in, n_out]) * std_init + mean_init)
-        self.mean_b = tf.Variable(tf.zeros(n_out))
-        self.log_var_b = tf.Variable(glorot([n_out]) * std_init + mean_init)
+        self.mean_W = tf.Variable(glorot([n_in, self.n_out]))
+        self.log_std_W = tf.Variable(glorot([n_in, self.n_out]) * std_init + mean_init)
+        self.mean_b = tf.Variable(tf.zeros(self.n_out))
+        self.log_var_b = tf.Variable(glorot([self.n_out]) * std_init + mean_init)
 
         if self.use_z:
             self.q0_mean = tf.Variable(
@@ -70,12 +69,12 @@ class DenseNF(tf.keras.layers.Layer):
         )
 
         r_flows = [
-            IAF(parity=i % 2, h_sizes=[flow_dim_h]) for i in range(self.n_flows_r)
+            IAF(parity=i % 2, h_sizes=self.flow_h_sizes) for i in range(self.n_flows_r)
         ]
         self.flow_r = NormalizingFlow(r_flows)
 
         q_flows = [
-            IAF(parity=i % 2, h_sizes=[flow_dim_h]) for i in range(self.n_flows_q)
+            IAF(parity=i % 2, h_sizes=self.flow_h_sizes) for i in range(self.n_flows_q)
         ]
         self.flow_q = NormalizingFlow(q_flows)
 

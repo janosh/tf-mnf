@@ -24,11 +24,14 @@ parser.add_argument("-batch_size", type=int, default=64)
 parser.add_argument("-use_z", action="store_false")
 parser.add_argument("-n_flows_q", type=int, default=2)
 parser.add_argument("-n_flows_r", type=int, default=2)
-parser.add_argument("-use_z", action="store_false")
-parser.add_argument("-seed", type=int, default=1)
+# Random seed to ensure reproducible results.
+parser.add_argument("-seed", type=int, default=0)
 parser.add_argument("-learning_rate", type=float, default=0.001)
-parser.add_argument("-thres_std", type=float, default=1)
-parser.add_argument("-flow_dim_h", type=int, default=50)
+# Maximum stddev for layer weights. Larger values will be clipped at call time.
+parser.add_argument("-max_std", type=float, default=1)
+# How many and what size of dense layers to use in the multiplicative normalizing flow.
+parser.add_argument("-flow_h_sizes", type=int, default=[50])
+# How many predictions to make at test time. More yield better uncertainty estimates.
 parser.add_argument("-test_samples", type=int, default=50)
 parser.add_argument("-learn_p", action="store_true")
 # Scaling factor for initial stddev of Glorot-normal initialized tf.Variables.
@@ -60,8 +63,8 @@ nf_lenet = NFLeNet(
     n_flows_r=flags.n_flows_r,
     use_z=flags.use_z,
     learn_p=flags.learn_p,
-    thres_std=flags.thres_std,
-    flow_dim_h=flags.flow_dim_h,
+    max_std=flags.max_std,
+    flow_h_sizes=flags.flow_h_sizes,
     std_init=flags.std_init,
 )
 
