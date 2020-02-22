@@ -1,7 +1,7 @@
 import numpy as np
 import tensorflow as tf
 
-from flows import RNVP, NormalizingFlow
+from flows import IAF, NormalizingFlow
 
 
 class Conv2DNF(tf.keras.layers.Layer):
@@ -82,10 +82,14 @@ class Conv2DNF(tf.keras.layers.Layer):
             glorot([1]) * std_init + np.log(self.prior_var_b), trainable=self.learn_p,
         )
 
-        r_flows = [RNVP(n_filters, dim_h=2 * flow_dim_h) for _ in range(self.n_flows_r)]
+        r_flows = [
+            IAF(parity=i % 2, h_sizes=[flow_dim_h]) for i in range(self.n_flows_r)
+        ]
         self.flow_r = NormalizingFlow(r_flows)
 
-        q_flows = [RNVP(n_filters, dim_h=flow_dim_h) for _ in range(self.n_flows_q)]
+        q_flows = [
+            IAF(parity=i % 2, h_sizes=[flow_dim_h]) for i in range(self.n_flows_q)
+        ]
         self.flow_q = NormalizingFlow(q_flows)
 
     def sample_z(self, batch_size):
