@@ -50,7 +50,7 @@ class MADE(tf.keras.layers.Layer):
             be carefully decoded downstream appropriately. the output of runn_ing the
             tests for this file makes this a bit more clear with examples.
         num_masks: can be used to train ensemble over orderings/connections
-        shuffle: Whether to apply random permutations to ordering of the inputs.
+        shuffle: Whether to apply a random permutation to the input ordering.
         """
         super().__init__(**kwargs)
         self.n_outputs = n_outputs
@@ -80,9 +80,8 @@ class MADE(tf.keras.layers.Layer):
     def set_masks(self):
         if self.m and self.num_masks == 1:
             return  # Only a single seed, skip for efficiency.
-        n_layers = len(self.h_sizes)
 
-        # Fetch the next seed and construct a random stream.
+        # Construct a random number generator and fetch the next seed.
         rng = np.random.RandomState(self.seed)
         self.seed = (self.seed + 1) % self.num_masks
 
@@ -90,20 +89,19 @@ class MADE(tf.keras.layers.Layer):
         self.m[-1] = (
             rng.permutation(self.n_in) if self.shuffle else np.arange(self.n_in)
         )
-        for l in range(n_layers):
+        for l, size in enumerate(self.h_sizes):
             # Use minimum connectivity of previous layer as lower bound when sampling
             # values for m_l(k) to avoid unconnected units. See comment after eq. (13).
-            self.m[l] = rng.randint(
-                self.m[l - 1].min(), self.n_in - 1, size=self.h_sizes[l]
-            )
+            self.m[l] = rng.randint(self.m[l - 1].min(), self.n_in - 1, size=size)
 
         # Construct the mask matrices.
+        n_layers = len(self.h_sizes)
         masks = [self.m[l - 1][:, None] <= self.m[l][None, :] for l in range(n_layers)]
         masks.append(self.m[n_layers - 1][:, None] < self.m[-1][None, :])
 
-        # Handle the case where n_out = n_in * k, for integer k > 1.
         if self.n_outputs > 1:
-            # Replicate the mask across all outputs.
+            # In case of multiple outputs for each input, replicate the final layer's
+            # mask across all outputs.
             masks[-1] = np.concatenate([masks[-1]] * self.n_outputs, axis=1)
 
         # Update the masks in all MaskedDense layers.
