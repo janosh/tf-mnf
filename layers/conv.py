@@ -63,16 +63,19 @@ class Conv2DNF(tf.keras.layers.Layer):
         self.mean_W = tf.Variable(glorot(W_shape))
         self.log_std_W = tf.Variable(glorot(W_shape) * std_init + mean_init)
         self.mean_b = tf.Variable(tf.zeros(n_filters))
-        self.log_var_bias = tf.Variable(glorot([n_filters]) * std_init + mean_init)
+        self.log_var_b = tf.Variable(glorot([n_filters]) * std_init + mean_init)
 
         if self.use_z:
+            # q0_mean has similar function to a dropout rate as it determines the
+            # mean of the multiplicative noise z_k in eq. 5.
             self.q0_mean = tf.Variable(
                 glorot([n_filters]) + (0 if self.n_flows_q > 0 else 1)
-            )  # aka dropout_rates_mean
+            )
             self.q0_log_var = tf.Variable(glorot([n_filters]) * std_init + mean_init)
-            self.rsr_M = tf.Variable(glorot([n_filters]))  # var_r_aux
-            self.apvar_M = tf.Variable(glorot([n_filters]))  # apvar_r_aux
-            self.rsri_M = tf.Variable(glorot([n_filters]))  # var_r_auxi
+
+            self.r0_mean = tf.Variable(glorot([n_filters]))
+            self.r0_log_var = tf.Variable(glorot([n_filters]))
+            self.r0_apvar = tf.Variable(glorot([n_filters]))
 
         self.prior_var_r_p = tf.Variable(
             glorot([self.input_dim]) * std_init + np.log(self.prior_var_w),
@@ -110,7 +113,7 @@ class Conv2DNF(tf.keras.layers.Layer):
     def get_mean_var(self, x):
         std_w = tf.clip_by_value(tf.exp(self.log_std_W), 0, self.max_std)
         var_w = tf.square(std_w)
-        var_b = tf.clip_by_value(tf.exp(self.log_var_bias), 0, self.max_std ** 2)
+        var_b = tf.clip_by_value(tf.exp(self.log_var_b), 0, self.max_std ** 2)
 
         conv_args = {"strides": self.strides, "padding": self.padding}
 
@@ -120,7 +123,7 @@ class Conv2DNF(tf.keras.layers.Layer):
         return mean_W_out + self.mean_b, var_w_out + var_b
 
     def kl_div(self):
-        z_sample, log_dets = self.sample_z(1)
+        z_sample, log_det_q = self.sample_z(1)
 
         std_w = tf.exp(self.log_std_W)
         std_w = tf.reshape(std_w, [-1, self.n_filters])
@@ -128,53 +131,56 @@ class Conv2DNF(tf.keras.layers.Layer):
         Mtilde = mu_w * z_sample
         mean_b = self.mean_b * z_sample
         Vtilde = tf.square(std_w)
-        # outer product
+        # Stacking yields same result as outer product with ones. See eqs. 11, 12.
         iUp = tf.stack([tf.exp(self.prior_var_r_p)] * self.n_filters, axis=1)
 
-        log_q = 0
-        if self.use_z:
-            log_q = -0.5 * tf.reduce_sum(tf.math.log(2 * np.pi) + self.q0_log_var + 1)
-            log_q -= log_dets[0]
-
-        kldiv_w = 0.5 * tf.reduce_sum(
+        kl_div_w = 0.5 * tf.reduce_sum(
             tf.math.log(iUp)
             - tf.math.log(std_w)
             + (Vtilde + tf.square(Mtilde)) / iUp
             - 1
         )
-        kldiv_b = 0.5 * tf.reduce_sum(
+        kl_div_b = 0.5 * tf.reduce_sum(
             self.prior_var_r_p_bias
-            - self.log_var_bias
-            + (tf.exp(self.log_var_bias) + tf.square(mean_b))
+            - self.log_var_b
+            + (tf.exp(self.log_var_b) + tf.square(mean_b))
             / tf.exp(self.prior_var_r_p_bias)
             - 1
         )
 
+        log_q = -tf.squeeze(log_det_q)
+        if self.use_z:
+            # Compute entropy of the initial distribution q(z_0).
+            # This is independent of the actual sample z_0.
+            log_q -= 0.5 * tf.reduce_sum(tf.math.log(2 * np.pi) + self.q0_log_var + 1)
+
         log_r = 0
         if self.use_z:
-            apvar_M = self.apvar_M
-            mean_w = tf.linalg.matvec(Mtilde, apvar_M)
-            var_w = tf.linalg.matvec(Vtilde, tf.square(apvar_M))
+            if self.n_flows_r > 0:
+                z_sample, log_det_r = self.flow_r.forward(z_sample)
+                log_r = tf.squeeze(log_det_r)
+
+            mean_w = tf.linalg.matvec(Mtilde, self.r0_apvar)
+            var_w = tf.linalg.matvec(Vtilde, tf.square(self.r0_apvar))
             epsilon = tf.random.normal([self.input_dim])
             a = mean_w + tf.sqrt(var_w) * epsilon
-            mu_b = tf.reduce_sum(mean_b * apvar_M)
-            var_b = tf.reduce_sum(tf.exp(self.log_var_bias) * tf.square(apvar_M))
+            mu_b = tf.reduce_sum(mean_b * self.r0_apvar)
+            var_b = tf.reduce_sum(tf.exp(self.log_var_b) * tf.square(self.r0_apvar))
             a += mu_b + tf.sqrt(var_b) * tf.random.normal([])
 
-            w__ = tf.reduce_mean(tf.tensordot(a, self.rsr_M, axes=0), axis=0)
-            wv__ = tf.reduce_mean(tf.tensordot(a, self.rsri_M, axes=0), axis=0)
+            # Mean and log variance of the auxiliary normal dist. r(z_T_b|W) in eq. 8.
+            mean_r = tf.reduce_mean(tf.tensordot(a, self.r0_mean, axes=0), axis=0)
+            log_var_r = tf.reduce_mean(tf.tensordot(a, self.r0_log_var, axes=0), axis=0)
 
-            if self.n_flows_r > 0:
-                z_sample, log_r = self.flow_r.forward(z_sample)
-                log_r = log_r[0]
-
+            # Log likelihood of a zero-covariance normal dist: ln N(x | mu, sigma) =
+            # -1/2 sum_dims(ln(2 pi) + ln(sigma^2) + (x - mu)^2 / sigma^2)
             log_r += 0.5 * tf.reduce_sum(
-                -tf.exp(wv__) * tf.square(z_sample - w__)
+                -tf.exp(log_var_r) * tf.square(z_sample - mean_r)
                 - tf.math.log(2 * np.pi)
-                + wv__
+                + log_var_r
             )
 
-        return kldiv_w + kldiv_b - log_r + log_q
+        return kl_div_w + kl_div_b - log_r + log_q
 
     def call(self, x):
         z_samples, _ = self.sample_z(x.shape[0])

@@ -52,13 +52,16 @@ class DenseNF(tf.keras.layers.Layer):
         self.log_var_b = tf.Variable(glorot([self.n_out]) * std_init + mean_init)
 
         if self.use_z:
+            # q0_mean has similar function to a dropout rate as it determines the
+            # mean of the multiplicative noise z_i in eq. 4.
             self.q0_mean = tf.Variable(
                 glorot([n_in]) + (0 if self.n_flows_q > 0 else 1)
-            )  # aka dropout_rates_mean
+            )
             self.q0_log_var = tf.Variable(glorot([n_in]) * std_init + mean_init)
-            self.rsr_M = tf.Variable(glorot([n_in]))  # var_r_aux
-            self.apvar_M = tf.Variable(glorot([n_in]))  # apvar_r_aux
-            self.rsri_M = tf.Variable(glorot([n_in]))  # var_r_auxi
+
+            self.r0_mean = tf.Variable(glorot([n_in]))
+            self.r0_log_var = tf.Variable(glorot([n_in]))
+            self.r0_apvar = tf.Variable(glorot([n_in]))
 
         self.prior_var_r_p = tf.Variable(
             glorot([n_in]) * std_init + np.log(self.prior_var_w),
@@ -94,27 +97,20 @@ class DenseNF(tf.keras.layers.Layer):
         return z_samples, log_dets
 
     def kl_div(self):
-        M, log_dets = self.sample_z(1)
+        z_sample, log_det_q = self.sample_z(1)
 
-        Mtilde = M[0, :, None] * self.mean_W
+        Mtilde = tf.transpose(z_sample) * self.mean_W
         Vtilde = tf.square(tf.exp(self.log_std_W))
-        # outer product
+        # Stacking yields same result as outer product with ones. See eqs. 9, 10.
         iUp = tf.stack([tf.exp(self.prior_var_r_p)] * self.n_out, axis=1)
 
-        log_q = 0
-        if self.use_z:
-            # Compute entropy of the initial distribution q(z_0).
-            # This is independent of the actual sample z_0.
-            log_q = -0.5 * tf.reduce_sum(tf.math.log(2 * np.pi) + self.q0_log_var + 1)
-            log_q -= log_dets[0]
-
-        kldiv_w = 0.5 * tf.reduce_sum(
+        kl_div_w = 0.5 * tf.reduce_sum(
             tf.math.log(iUp)
             - 2 * self.log_std_W
             + (Vtilde + tf.square(Mtilde)) / iUp
             - 1
         )
-        kldiv_b = 0.5 * tf.reduce_sum(
+        kl_div_b = 0.5 * tf.reduce_sum(
             self.prior_var_r_p_bias
             - self.log_var_b
             + (tf.exp(self.log_var_b) + tf.square(self.mean_b))
@@ -122,32 +118,36 @@ class DenseNF(tf.keras.layers.Layer):
             - 1
         )
 
+        log_q = -tf.squeeze(log_det_q)
         if self.use_z:
-            # shared network for hidden layer
-            mean_w = tf.linalg.matvec(tf.transpose(Mtilde), self.apvar_M)
-            epsilon = tf.random.normal([self.n_out])
-            var_w = tf.linalg.matvec(tf.transpose(Vtilde), tf.square(self.apvar_M))
-            a = tf.tanh(mean_w + tf.sqrt(var_w) * epsilon)
-            # split at output layer
-            if len(a.shape) > 0:
-                w__ = tf.reduce_mean(tf.tensordot(a, self.rsr_M, axes=0), axis=0)
-                wv__ = tf.reduce_mean(tf.tensordot(a, self.rsri_M, axes=0), axis=0)
-            else:
-                w__ = self.rsr_M * a
-                wv__ = self.rsri_M * a
+            # Compute entropy of the initial distribution q(z_0).
+            # This is independent of the actual sample z_0.
+            log_q -= 0.5 * tf.reduce_sum(tf.math.log(2 * np.pi) + self.q0_log_var + 1)
 
-            log_r = 0
+        log_r = 0
+        if self.use_z:
             if self.n_flows_r > 0:
-                M, log_r = self.flow_r.forward(M)
-                log_r = log_r[0]
+                z_sample, log_det_r = self.flow_r.forward(z_sample)
+                log_r = tf.squeeze(log_det_r)
+
+            # Shared network for hidden layer.
+            mean_w = tf.linalg.matvec(tf.transpose(Mtilde), self.r0_apvar)
+            var_w = tf.linalg.matvec(tf.transpose(Vtilde), tf.square(self.r0_apvar))
+            epsilon = tf.random.normal([self.n_out])
+            a = tf.tanh(mean_w + tf.sqrt(var_w) * epsilon)
+            # Split at output layer. Use tf.tensordot for outer product.
+            mean_r = tf.reduce_mean(tf.tensordot(a, self.r0_mean, axes=0), axis=0)
+            log_var_r = tf.reduce_mean(tf.tensordot(a, self.r0_log_var, axes=0), axis=0)
+            # mu_tilde & sigma_tilde from eqs. 9, 10: mean and log var of the auxiliary
+            # normal dist. r(z_T_b|W) from eq. 8. Used to compute first term in 15.
 
             log_r += 0.5 * tf.reduce_sum(
-                -tf.exp(wv__) * tf.square(M - w__) - tf.math.log(2 * np.pi) + wv__
+                -tf.exp(log_var_r) * tf.square(z_sample - mean_r)
+                - tf.math.log(2 * np.pi)
+                + log_var_r
             )
-        else:
-            log_r = 0
 
-        return kldiv_w + kldiv_b - log_r + log_q
+        return kl_div_w + kl_div_b - log_r + log_q
 
     def call(self, x):
         z_samples, _ = self.sample_z(x.shape[0])
