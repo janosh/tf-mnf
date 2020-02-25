@@ -100,7 +100,7 @@ class Conv2DNF(tf.keras.layers.Layer):
         if not self.use_z:
             return tf.ones([batch_size, self.n_filters]), log_dets
 
-        q0_mean = tf.stack([self.q0_mean] * batch_size)
+        q0_mean = tf.tile(self.q0_mean[None, :], [batch_size, 1])
         epsilon = tf.random.normal([batch_size, self.n_filters])
         q0_var = tf.exp(self.q0_log_var)
         z_samples = q0_mean + tf.sqrt(q0_var) * epsilon
@@ -163,10 +163,10 @@ class Conv2DNF(tf.keras.layers.Layer):
             mean_w = tf.linalg.matvec(Mtilde, self.r0_apvar)
             var_w = tf.linalg.matvec(Vtilde, tf.square(self.r0_apvar))
             epsilon = tf.random.normal([self.input_dim])
-            a = mean_w + tf.sqrt(var_w) * epsilon
+            a = tf.tanh(mean_w + tf.sqrt(var_w) * epsilon)
             mu_b = tf.reduce_sum(mean_b * self.r0_apvar)
             var_b = tf.reduce_sum(tf.exp(self.log_var_b) * tf.square(self.r0_apvar))
-            a += mu_b + tf.sqrt(var_b) * tf.random.normal([])
+            a += tf.tanh(mu_b + tf.sqrt(var_b) * tf.random.normal([]))
 
             # Mean and log variance of the auxiliary normal dist. r(z_T_b|W) in eq. 8.
             mean_r = tf.reduce_mean(tf.tensordot(a, self.r0_mean, axes=0), axis=0)
@@ -183,11 +183,11 @@ class Conv2DNF(tf.keras.layers.Layer):
         return kl_div_w + kl_div_b - log_r + log_q
 
     def call(self, x):
-        z_samples, _ = self.sample_z(x.shape[0])
+        z_samples, _ = self.sample_z(tf.shape(x)[0])
         mean, var = self.get_mean_var(x)
 
         mu_out = mean * z_samples[:, None, None, :]  # insert singleton dims
-        epsilon = tf.random.normal(mu_out.shape)
+        epsilon = tf.random.normal(tf.shape(mu_out))
         sigma_out = tf.sqrt(var) * epsilon
 
         return mu_out + sigma_out

@@ -86,7 +86,7 @@ class DenseNF(tf.keras.layers.Layer):
         if not self.use_z:
             return tf.ones([batch_size, self.n_in]), log_dets
 
-        q0_mean = tf.stack([self.q0_mean] * batch_size)
+        q0_mean = tf.tile(self.q0_mean[None, :], [batch_size, 1])
         epsilon = tf.random.normal([batch_size, self.n_in])
         q0_var = tf.exp(self.q0_log_var)
         z_samples = q0_mean + tf.sqrt(q0_var) * epsilon
@@ -150,14 +150,14 @@ class DenseNF(tf.keras.layers.Layer):
         return kl_div_w + kl_div_b - log_r + log_q
 
     def call(self, x):
-        z_samples, _ = self.sample_z(x.shape[0])
+        z_samples, _ = self.sample_z(tf.shape(x)[0])
         mu_out = tf.matmul(x * z_samples, self.mean_W) + self.mean_b
 
-        std_W = tf.clip_by_value(tf.exp(self.log_std_W), 0, self.thres_std)
-        var_b = tf.clip_by_value(tf.exp(self.log_var_b), 0, self.thres_std ** 2)
+        std_W = tf.clip_by_value(tf.exp(self.log_std_W), 0, self.max_std)
+        var_b = tf.clip_by_value(tf.exp(self.log_var_b), 0, self.max_std ** 2)
         var_W = tf.square(std_W)
         V_h = tf.matmul(tf.square(x), var_W) + var_b
-        epsilon = tf.random.normal(mu_out.shape)
+        epsilon = tf.random.normal(tf.shape(mu_out))
         sigma_out = tf.sqrt(V_h) * epsilon
 
         return mu_out + sigma_out

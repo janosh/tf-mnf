@@ -20,7 +20,7 @@ class RNVP(tf.Module):
     def forward(self, z):  # z -> x
         # Get random Bernoulli mask. This decides which channels will remain
         # unchanged and which will be transformed as functions of the unchanged.
-        mask = tf.keras.backend.random_binomial(z.shape, p=0.5)
+        mask = tf.keras.backend.random_binomial(tf.shape(z), p=0.5)
         z1, z2 = (1 - mask) * z, mask * z
         y = self.net(z2)
         shift = self.t(y)

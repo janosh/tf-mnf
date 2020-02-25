@@ -1,6 +1,5 @@
 # %%
 import argparse
-from datetime import datetime
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -26,7 +25,7 @@ parser.add_argument("-n_flows_q", type=int, default=2)
 parser.add_argument("-n_flows_r", type=int, default=2)
 # Random seed to ensure reproducible results.
 parser.add_argument("-seed", type=int, default=0)
-parser.add_argument("-learning_rate", type=float, default=0.001)
+parser.add_argument("-learning_rate", type=float, default=1e-3)
 # Maximum stddev for layer weights. Larger values will be clipped at call time.
 parser.add_argument("-max_std", type=float, default=1)
 # How many and what size of dense layers to use in the multiplicative normalizing flow.
@@ -51,25 +50,16 @@ X_train, X_test = X_train[..., None], X_test[..., None]
 # One-hot encode the labels.
 y_train, y_test = [tf.keras.utils.to_categorical(y, 10) for y in [y_train, y_test]]
 
-# Create 10000-sample validation set. Leaves 50000 samples for training.
-(X_train, X_val), (y_train, y_val) = [np.split(x, [50000]) for x in [X_train, y_train]]
-
 tf.random.set_seed(flags.seed)
 np.random.seed(flags.seed)
 
 # %%
-nf_lenet = NFLeNet(
-    n_flows_q=flags.n_flows_q,
-    n_flows_r=flags.n_flows_r,
-    use_z=flags.use_z,
-    learn_p=flags.learn_p,
-    max_std=flags.max_std,
-    flow_h_sizes=flags.flow_h_sizes,
-    std_init=flags.std_init,
-)
+layer_args = ["use_z", "n_flows_q", "n_flows_r", "learn_p"]
+layer_args += ["max_std", "flow_h_sizes", "std_init"]
+layer_args = {key: getattr(flags, key) for key in layer_args}
+nf_lenet = NFLeNet(**layer_args, std_init=flags.std_init)
 
-optimizer = tf.optimizers.Adam(flags.learning_rate)
-
+adam = tf.optimizers.Adam(flags.learning_rate)
 # %%
 
 
@@ -92,40 +82,11 @@ def loss_fn(labels, preds):
     return entropic_loss + kl_loss
 
 
-@tf.function
-def train_step(images, labels):
-    with tf.GradientTape() as tape:
-        # We could draw multiple posterior samples here to get unbiased Monte Carlo
-        # estimate for the NLL which would decrease training variance but slow us down.
-        preds = nf_lenet(images)
-        loss = loss_fn(labels, preds)
-        tf.summary.scalar("VI lower bound loss (NLL + KL)", loss)
-    grads = tape.gradient(loss, nf_lenet.trainable_variables)
-    optimizer.apply_gradients(zip(grads, nf_lenet.trainable_variables))
+# %%
+nf_lenet.compile(loss=loss_fn, optimizer=adam, metrics=["accuracy"])
 
-    train_acc = tf.reduce_mean(tf.metrics.categorical_accuracy(labels, preds))
-    return train_acc
-
-
-def train_nf_lenet():
-    for epoch in range(flags.epochs):
-        for j in tqdm(
-            range(flags.steps_per_epoch), desc=f"epoch {epoch + 1}/{flags.epochs}"
-        ):
-            batch = np.random.choice(len(X_train), flags.batch_size, replace=False)
-            tf.summary.experimental.set_step(optimizer.iterations)
-            train_acc = train_step(X_train[batch], y_train[batch])
-            tf.summary.scalar("training accuracy", train_acc)
-
-        # Accuracy estimated by single call for speed. Would be more accurate to
-        # approximately integrate over the parameter posteriors by averaging across
-        # multiple calls.
-        y_val_pred = nf_lenet(X_val)
-        val_acc = tf.reduce_mean(tf.metrics.categorical_accuracy(y_val, y_val_pred))
-
-        tf.summary.scalar("validation accuracy", val_acc)
-        print(f"Validation accuracy: {val_acc:.4g}")
-
+fit_args = {k: getattr(flags, k) for k in ["batch_size", "epochs", "steps_per_epoch"]}
+nf_hist = nf_lenet.fit(X_train, y_train, **fit_args, validation_split=0.1)
 
 # %%
 @tf.function
@@ -135,14 +96,6 @@ def predict_nf_lenet(X=X_test, n_samples=flags.test_samples):
         preds.append(nf_lenet(X))
     return tf.squeeze(preds)
 
-
-# %%
-log_writer = tf.summary.create_file_writer(
-    flags.logdir + datetime.now().strftime("%Y.%m.%d-%H:%M:%S")
-)
-log_writer.set_as_default()
-
-train_nf_lenet()
 
 # %%
 # Remove image's channel dimension.
@@ -183,3 +136,62 @@ for i in range(1, 10):
     [y_pred] = lenet.predict(pic9_rot[None, ..., None])
     ax2 = fig2.add_subplot(nrows, ncols, i, ylim=[None, 1.1], xticks=range(10))
     ax2.bar(range(10), y_pred)
+
+
+"""
+# Below is code for low-level training with tf.GradienTape. More verbose but easier to
+# debug, especially with @tf.function commented out.
+
+# %%
+# Create 10000-sample validation set. Leaves 50000 samples for training.
+try:
+    X_val, y_val
+except NameError:
+    X_train, X_val = np.split(X_train, [50000])
+    y_train, y_val = np.split(y_train, [50000])
+
+# %%
+@tf.function
+def train_step(images, labels):
+    with tf.GradientTape() as tape:
+        # We could draw multiple posterior samples here to get unbiased Monte Carlo
+        # estimate for the NLL which would decrease training variance but slow us down.
+        preds = nf_lenet(images)
+        loss = loss_fn(labels, preds)
+        tf.summary.scalar("VI lower bound loss (NLL + KL)", loss)
+    grads = tape.gradient(loss, nf_lenet.trainable_variables)
+    adam.apply_gradients(zip(grads, nf_lenet.trainable_variables))
+
+    train_acc = tf.reduce_mean(tf.metrics.categorical_accuracy(labels, preds))
+    return train_acc
+
+
+def train_nf_lenet():
+    for epoch in range(flags.epochs):
+        for j in tqdm(
+            range(flags.steps_per_epoch), desc=f"epoch {epoch + 1}/{flags.epochs}"
+        ):
+            batch = np.random.choice(len(X_train), flags.batch_size, replace=False)
+            tf.summary.experimental.set_step(adam.iterations)
+            train_acc = train_step(X_train[batch], y_train[batch])
+            tf.summary.scalar("training accuracy", train_acc)
+
+        # Accuracy estimated by single call for speed. Would be more accurate to
+        # approximately integrate over the parameter posteriors by averaging across
+        # multiple calls.
+        y_val_pred = nf_lenet(X_val)
+        val_acc = tf.reduce_mean(tf.metrics.categorical_accuracy(y_val, y_val_pred))
+
+        tf.summary.scalar("validation accuracy", val_acc)
+        print(f"Validation accuracy: {val_acc:.4g}")
+
+
+# %%
+from datetime import datetime
+log_writer = tf.summary.create_file_writer(
+    flags.logdir + datetime.now().strftime("%Y.%m.%d-%H:%M:%S")
+)
+log_writer.set_as_default()
+
+train_nf_lenet()
+"""

@@ -22,7 +22,7 @@ class MAF(tf.Module):
         self.net = net or MADE(n_outputs=2, h_sizes=h_sizes)
 
     def forward(self, z):
-        batch_size, dim = z.shape  # dim: the flow's dimensionality.
+        batch_size, dim = tf.shape(z)  # dim: the flow's dimensionality.
         x = tf.zeros_like(z)
         log_dets = tf.zeros(batch_size)
         # Reverse order, so that if we chain MAFs, we spread expressivity equally

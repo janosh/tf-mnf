@@ -15,7 +15,7 @@ class NormalizingFlow(tf.Module):
         self.flows = flows
 
     def forward(self, z, direction="forward", with_steps=False):  # z -> x
-        log_dets = tf.zeros(z.shape[0])
+        log_dets = tf.zeros(tf.shape(z)[0])
         xs = [z]
         for flow in reversed(self.flows) if direction == "inverse" else self.flows:
             z, ld = getattr(flow, direction)(z)
