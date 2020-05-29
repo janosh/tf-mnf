@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 import tensorflow as tf
-from scipy import ndimage
+from scipy.ndimage import rotate
 from tqdm import tqdm
 
 from models import LeNet, NFLeNet
@@ -37,6 +37,7 @@ parser.add_argument("-learn_p", action="store_true")
 parser.add_argument("-std_init", type=float, default=1e1)
 flags, _ = parser.parse_known_args()
 
+
 # %%
 # Load MNIST handwritten digits. 60000 images for training, 10000 for testing.
 (X_train, y_train), (X_test, y_test) = tf.keras.datasets.mnist.load_data()
@@ -53,16 +54,19 @@ y_train, y_test = [tf.keras.utils.to_categorical(y, 10) for y in [y_train, y_tes
 tf.random.set_seed(flags.seed)
 np.random.seed(flags.seed)
 
+
 # %%
-layer_args = ["use_z", "n_flows_q", "n_flows_r", "learn_p"]
-layer_args += ["max_std", "flow_h_sizes", "std_init"]
+layer_args = [
+    *["use_z", "n_flows_q", "n_flows_r", "learn_p"],
+    *["max_std", "flow_h_sizes", "std_init"],
+]
 layer_args = {key: getattr(flags, key) for key in layer_args}
-nf_lenet = NFLeNet(**layer_args, std_init=flags.std_init)
+nf_lenet = NFLeNet(**layer_args)
 
 adam = tf.optimizers.Adam(flags.learning_rate)
+
+
 # %%
-
-
 def loss_fn(labels, preds):
     # Returns minus the evidence lower bound (ELBO) which we minimize. This implicitly
     # maximizes the log-likelihood of observed data (X_train, y_train) under the model.
@@ -88,11 +92,12 @@ nf_lenet.compile(loss=loss_fn, optimizer=adam, metrics=["accuracy"])
 fit_args = {k: getattr(flags, k) for k in ["batch_size", "epochs", "steps_per_epoch"]}
 nf_hist = nf_lenet.fit(X_train, y_train, **fit_args, validation_split=0.1)
 
+
 # %%
 @tf.function
 def predict_nf_lenet(X=X_test, n_samples=flags.test_samples):
     preds = []
-    for i in tqdm(range(n_samples), desc="Sampling"):
+    for _ in tqdm(range(n_samples), desc="Sampling"):
         preds.append(nf_lenet(X))
     return tf.squeeze(preds)
 
@@ -101,23 +106,33 @@ def predict_nf_lenet(X=X_test, n_samples=flags.test_samples):
 # Remove image's channel dimension.
 pic4 = X_test[4][..., 0]
 pic9 = X_test[12][..., 0]
-nrows = ncols = 3
+
 
 # %%
-fig1 = plt.figure(figsize=(12, 8))
-fig2 = plt.figure(figsize=(16, 12))
-for i in range(1, 10):
-    pic9_rot = ndimage.rotate(pic9, i * 20, reshape=False)
-    ax1 = fig1.add_subplot(nrows, ncols, i)
-    ax1.imshow(pic9_rot, cmap="gray")
+fig, axes = plt.subplots(3, 3, figsize=(8, 8))
+fig.subplots_adjust(wspace=0, hspace=0.05)
+for i, ax in enumerate(axes.flat):
+    pic9_rot = rotate(pic9, i * 20, reshape=False)
+    ax.axis("off")
+    ax.imshow(pic9_rot, cmap="gray")
+    ax.set(title=f"{i * 20} deg")
+
+
+# %%
+fig, axes = plt.subplots(3, 3, figsize=(12, 8))
+for i, ax1 in enumerate(axes.flat):
+    pic9_rot = rotate(pic9, i * 20, reshape=False)
 
     # Insert batch and channel dimension.
     y_pred = predict_nf_lenet(pic9_rot[None, ..., None])
     df = pd.DataFrame(y_pred.numpy()).melt(var_name="digit", value_name="softmax")
-    fig2.add_subplot(nrows, ncols, i, ylim=[None, 1])
     # scale="count": Width of violins given by the number of observations in that bin.
     # cut=0: Limit the violin range to the range of observed data.
-    sns.violinplot(data=df, x="digit", y="softmax", scale="count", cut=0)
+    sns.violinplot(data=df, x="digit", y="softmax", scale="count", cut=0, ax=ax1)
+    ax1.set(ylim=[None, 1.1])
+    ax2 = ax1.inset_axes([0, 0.5, 0.4, 0.4])
+    ax2.axis("off")
+    ax2.imshow(pic9_rot, cmap="gray")
 
 
 # %%
@@ -125,22 +140,24 @@ lenet = LeNet()
 lenet.compile(optimizer="adam", loss="categorical_crossentropy", metrics=["accuracy"])
 lenet_hist = lenet.fit(X_train, y_train)
 
+
 # %%
-fig1 = plt.figure(figsize=(12, 8))
-fig2 = plt.figure(figsize=(12, 8))
-for i in range(1, 10):
-    pic9_rot = ndimage.rotate(pic9, i * 20, reshape=False)
-    ax1 = fig1.add_subplot(nrows, ncols, i)
-    ax1.imshow(pic9_rot, cmap="gray")
+fig, axes = plt.subplots(3, 3, figsize=(12, 8))
+for i, ax1 in enumerate(axes.flat):
+    pic9_rot = rotate(pic9, i * 20, reshape=False)
 
     [y_pred] = lenet.predict(pic9_rot[None, ..., None])
-    ax2 = fig2.add_subplot(nrows, ncols, i, ylim=[None, 1.1], xticks=range(10))
-    ax2.bar(range(10), y_pred)
+    ax1.bar(range(10), y_pred)
+    ax1.set(ylim=[None, 1.1], xticks=range(10))
+    ax2 = ax1.inset_axes([0, 0.5, 0.4, 0.4])
+    ax2.axis("off")
+    ax2.imshow(pic9_rot, cmap="gray")
 
 
 """
 # Below is code for low-level training with tf.GradienTape. More verbose but easier to
 # debug, especially with @tf.function commented out.
+
 
 # %%
 # Create 10000-sample validation set. Leaves 50000 samples for training.
@@ -149,6 +166,7 @@ try:
 except NameError:
     X_train, X_val = np.split(X_train, [50000])
     y_train, y_val = np.split(y_train, [50000])
+
 
 # %%
 @tf.function
