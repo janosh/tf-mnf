@@ -134,6 +134,8 @@ class DenseNF(tf.keras.layers.Layer):
             mean_w = tf.linalg.matvec(tf.transpose(Mtilde), self.r0_apvar)
             var_w = tf.linalg.matvec(tf.transpose(Vtilde), tf.square(self.r0_apvar))
             epsilon = tf.random.normal([self.n_out])
+            # The bias contribution is not included in `a` since the multiplicative
+            # noise is at the input units (hence it doesn't affect the biases)
             a = tf.tanh(mean_w + tf.sqrt(var_w) * epsilon)
             # Split at output layer. Use tf.tensordot for outer product.
             mean_r = tf.reduce_mean(tf.tensordot(a, self.r0_mean, axes=0), axis=0)

@@ -3,8 +3,8 @@ import tensorflow as tf
 
 class RNVP(tf.Module):
     """Affine half (aka Real Non-Volume Preserving) flow (x = z * exp(s) + t),
-    where a randomly selected half z1 of the dimensions in z are affinely transformed
-    as a function of the other half z2, i.e. scaled by s(z2) and shifted by t(z2).
+    where a randomly selected half z1 of the dimensions in z are transformed as an
+    affine function of the other half z2, i.e. scaled by s(z2) and shifted by t(z2).
 
     From "Density estimation using Real NVP", Dinh et al. (May 2016)
     https://arxiv.org/abs/1605.08803

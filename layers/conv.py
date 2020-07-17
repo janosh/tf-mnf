@@ -163,10 +163,16 @@ class Conv2DNF(tf.keras.layers.Layer):
             mean_w = tf.linalg.matvec(Mtilde, self.r0_apvar)
             var_w = tf.linalg.matvec(Vtilde, tf.square(self.r0_apvar))
             epsilon = tf.random.normal([self.input_dim])
-            a = tf.tanh(mean_w + tf.sqrt(var_w) * epsilon)
+            # For convolutional layers, linear mappings empirically work better than
+            # tanh non-linearity. Hence the removal of a = tf.tanh(a). Christos Louizos
+            # confirmed this in https://github.com/AMLab-Amsterdam/MNF_VBNN/issues/4
+            # even though the paper states the use of tanh in conv layers.
+            a = mean_w + tf.sqrt(var_w) * epsilon
+            # a = tf.tanh(a)
             mu_b = tf.reduce_sum(mean_b * self.r0_apvar)
             var_b = tf.reduce_sum(tf.exp(self.log_var_b) * tf.square(self.r0_apvar))
-            a += tf.tanh(mu_b + tf.sqrt(var_b) * tf.random.normal([]))
+            a += mu_b + tf.sqrt(var_b) * tf.random.normal([])
+            # a = tf.tanh(a)
 
             # Mean and log variance of the auxiliary normal dist. r(z_T_b|W) in eq. 8.
             mean_r = tf.reduce_mean(tf.tensordot(a, self.r0_mean, axes=0), axis=0)

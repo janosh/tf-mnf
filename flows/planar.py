@@ -22,7 +22,7 @@ class PlanarFlow(tf.Module):
         u_hat = self.u + (suw - uw) * w / tf.reduce_sum(w ** 2)
 
         zwb = self.dense(z)
-        shift = tf.matmul(tf.tanh(zwb), tf.transpose(u_hat))  # Use tanh non-linearity.
+        shift = tf.matmul(tf.tanh(zwb), tf.transpose(u_hat))
         x = z + shift
 
         # d tanh(x)/dx = 1 - tf.tanh(x)^2
