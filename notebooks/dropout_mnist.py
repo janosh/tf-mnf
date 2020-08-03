@@ -183,5 +183,6 @@ def exit_reenter_training_manifold(pred_fn, plot_type="violin"):
 # %%
 exit_reenter_training_manifold(lambda x: dropout_test(lenet_dropout, x))
 
+
 # %%
 exit_reenter_training_manifold(lambda x: lenet(x), plot_type="bar")

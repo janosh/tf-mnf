@@ -4,9 +4,8 @@ import argparse
 import pandas as pd
 import seaborn as sns
 import tensorflow as tf
-from tqdm import tqdm
-
 from models import NFFeedForward
+from tqdm import tqdm
 
 # %%
 parser = argparse.ArgumentParser(allow_abbrev=False)
@@ -26,6 +25,7 @@ parser.add_argument("-test_samples", type=int, default=50)
 parser.add_argument("-std_init", type=float, default=1e-2)
 flags, _ = parser.parse_known_args()
 
+
 # %%
 features = pd.read_csv("../data/bandgaps.csv")
 composition = features.pop("Composition")
@@ -38,6 +38,7 @@ y_train, y_test = [bandgaps[X.index] for X in [X_train, X_test]]
 
 tf.random.set_seed(flags.seed)
 
+
 # %%
 layer_args = ["use_z", "n_flows_q", "n_flows_r", "learn_p"]
 layer_args += ["max_std", "flow_h_sizes", "std_init"]
@@ -46,6 +47,7 @@ layer_args = {key: getattr(flags, key) for key in layer_args}
 model = NFFeedForward(layer_dims=[100, 50, 10, 1], **layer_args)
 
 adam = tf.optimizers.Adam(flags.learning_rate)
+
 
 # %%
 def loss_fn(y_true, y_pred):
@@ -69,6 +71,7 @@ model.compile(loss=loss_fn, optimizer=adam, metrics=["accuracy"])
 fit_args = {k: getattr(flags, k) for k in ["batch_size", "epochs"]}
 hist = model.fit(X_train.values, y_train.values, **fit_args)
 
+
 # %%
 def predict(X=X_test.values, n_samples=flags.test_samples):
     preds = []
@@ -82,6 +85,7 @@ preds = predict().numpy()
 preds = pd.DataFrame(preds, columns=composition.loc[y_test.index]).T.reset_index()
 preds["Eg (eV)"] = y_test.values
 
+
 # %%
 sns.pointplot(
     x="Eg (eV)",
@@ -93,6 +97,7 @@ sns.pointplot(
 # Below is code for low-level training with tf.GradienTape. More verbose but easier to
 # debug, especially with @tf.function commented out.
 
+
 # %%
 try:
     X_val, y_val
@@ -100,6 +105,7 @@ except Namerror:
     X_val = X_test.sample(frac=0.5, random_state=flags.seed)
     X_test = X_test.drop(X_val.index)
     y_val, y_test = [bandgaps[X.index] for X in [X_val, X_test]]
+
 
 # %%
 @tf.function
@@ -132,6 +138,7 @@ def train():
 
         tf.summary.scalar("MAE validation", val_acc)
         print(f"MAE on validation set: {val_acc:.4g} eV")
+
 
 # %%
 from datetime import datetime

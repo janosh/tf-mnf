@@ -1,13 +1,11 @@
 import tensorflow as tf
-
 from layers import DenseNF
-
-tfkl = tf.keras.layers
+from tensorflow.keras.layers import BatchNormalization, ReLU
 
 
 class NFFeedForward(tf.keras.Sequential):
-    def __init__(self, layer_dims=(100, 50, 10), activation=tfkl.ReLU, **kwargs):
-        layers, batch_norm = [], tfkl.BatchNormalization
+    def __init__(self, layer_dims=(100, 50, 10), activation=ReLU, **kwargs):
+        layers, batch_norm = [], BatchNormalization
         for dim in layer_dims:
             layers.extend([DenseNF(dim, **kwargs), activation(), batch_norm()])
         super().__init__(layers)
@@ -16,4 +14,4 @@ class NFFeedForward(tf.keras.Sequential):
         """Compute current KL divergence of the whole model.
         Can be used as a regularization term during training.
         """
-        return sum([l.kl_div() for l in self.layers if hasattr(l, "kl_div")])
+        return sum([lyr.kl_div() for lyr in self.layers if hasattr(lyr, "kl_div")])
