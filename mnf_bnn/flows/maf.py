@@ -3,7 +3,7 @@
 import tensorflow as tf
 import tensorflow_probability as tfp
 
-from flows.made import MADE
+from mnf_bnn.flows.made import MADE
 
 
 class MAF(tf.Module):

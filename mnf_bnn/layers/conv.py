@@ -1,7 +1,7 @@
 import numpy as np
 import tensorflow as tf
 
-from flows import IAF, NormalizingFlow
+from mnf_bnn.flows import IAF, NormalizingFlow
 
 
 class Conv2DNF(tf.keras.layers.Layer):

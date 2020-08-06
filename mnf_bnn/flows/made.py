@@ -89,14 +89,16 @@ class MADE(tf.keras.layers.Layer):
         self.m[-1] = (
             rng.permutation(self.n_in) if self.shuffle else np.arange(self.n_in)
         )
-        for l, size in enumerate(self.h_sizes):
+        for lyr, size in enumerate(self.h_sizes):
             # Use minimum connectivity of previous layer as lower bound when sampling
             # values for m_l(k) to avoid unconnected units. See comment after eq. (13).
-            self.m[l] = rng.randint(self.m[l - 1].min(), self.n_in - 1, size=size)
+            self.m[lyr] = rng.randint(self.m[lyr - 1].min(), self.n_in - 1, size=size)
 
         # Construct the mask matrices.
         n_layers = len(self.h_sizes)
-        masks = [self.m[l - 1][:, None] <= self.m[l][None, :] for l in range(n_layers)]
+        masks = [
+            self.m[lyr - 1][:, None] <= self.m[lyr][None, :] for lyr in range(n_layers)
+        ]
         masks.append(self.m[n_layers - 1][:, None] < self.m[-1][None, :])
 
         if self.n_outputs > 1:
@@ -105,6 +107,6 @@ class MADE(tf.keras.layers.Layer):
             masks[-1] = np.concatenate([masks[-1]] * self.n_outputs, axis=1)
 
         # Update the masks in all MaskedDense layers.
-        layers = [l for l in self.net.layers if isinstance(l, MaskedDense)]
-        for l, m in zip(layers, masks):
-            l.set_mask(m)
+        layers = [lyr for lyr in self.net.layers if isinstance(lyr, MaskedDense)]
+        for lyr, m in zip(layers, masks):
+            lyr.set_mask(m)

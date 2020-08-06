@@ -9,7 +9,7 @@ import tensorflow as tf
 from scipy.ndimage import rotate
 from tqdm import tqdm
 
-from models import LeNet, NFLeNet
+from mnf_bnn.models import LeNet, NFLeNet
 
 # %%
 parser = argparse.ArgumentParser(allow_abbrev=False)

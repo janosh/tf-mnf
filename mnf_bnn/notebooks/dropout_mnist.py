@@ -1,6 +1,4 @@
 # %%
-import os
-
 import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
@@ -11,10 +9,10 @@ from torch import nn
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
+from mnf_bnn import ROOT
+
 # %%
 plt.rcParams["figure.figsize"] = [12, 8]
-
-ROOT = os.path.abspath(__file__).split("/src", 1)[0]
 
 # Download MNIST dataset if not already at data_dir.
 # tv.transforms.Normalize() seems to be unnecessary.
@@ -182,6 +180,7 @@ def exit_reenter_training_manifold(pred_fn, plot_type="violin"):
 
 # %%
 exit_reenter_training_manifold(lambda x: dropout_test(lenet_dropout, x))
+plt.savefig("rot9-mnf-lenet.svg", bbox_inches="tight")
 
 
 # %%

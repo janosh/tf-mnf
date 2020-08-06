@@ -4,13 +4,14 @@ import argparse
 import pandas as pd
 import seaborn as sns
 import tensorflow as tf
-from models import NFFeedForward
 from tqdm import tqdm
+
+from mnf_bnn import ROOT, models
 
 # %%
 parser = argparse.ArgumentParser(allow_abbrev=False)
 # TensorBoard log directory
-parser.add_argument("-logdir", type=str, default="logs/bandgap/")
+parser.add_argument("-logdir", type=str, default=ROOT + "/logs/bandgap/")
 parser.add_argument("-epochs", type=int, default=5)
 parser.add_argument("-batch_size", type=int, default=64)
 parser.add_argument("-n_flows_q", type=int, default=2)
@@ -27,7 +28,7 @@ flags, _ = parser.parse_known_args()
 
 
 # %%
-features = pd.read_csv("../data/bandgaps.csv")
+features = pd.read_csv(ROOT + "/data/bandgaps.csv")
 composition = features.pop("Composition")
 features = features.astype("float32")
 bandgaps = features.pop("Eg (eV)")
@@ -44,7 +45,7 @@ layer_args = ["use_z", "n_flows_q", "n_flows_r", "learn_p"]
 layer_args += ["max_std", "flow_h_sizes", "std_init"]
 layer_args = {key: getattr(flags, key) for key in layer_args}
 
-model = NFFeedForward(layer_dims=[100, 50, 10, 1], **layer_args)
+model = models.MNFFeedForward(layer_sizes=[100, 50, 10, 1], **layer_args)
 
 adam = tf.optimizers.Adam(flags.learning_rate)
 
@@ -93,6 +94,8 @@ sns.pointplot(
     data=preds.melt(id_vars=["Composition", "Eg (eV)"], value_name="y_pred"),
 )
 
+
+# %%
 """
 # Below is code for low-level training with tf.GradienTape. More verbose but easier to
 # debug, especially with @tf.function commented out.

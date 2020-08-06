@@ -1,3 +1,4 @@
 *.pyc
 logs
 .ipynb_checkpoints
+*.egg*

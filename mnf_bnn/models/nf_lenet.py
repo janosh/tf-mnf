@@ -1,6 +1,7 @@
 import tensorflow as tf
-from layers import Conv2DNF, DenseNF
 from tensorflow.keras.layers import Flatten, MaxPool2D, ReLU, Softmax
+
+from mnf_bnn.layers import Conv2DNF, DenseNF
 
 
 class NFLeNet(tf.keras.Sequential):
