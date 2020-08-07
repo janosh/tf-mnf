@@ -143,12 +143,11 @@ pic, target = test_set[7]
 
 # %%
 def exit_reenter_training_manifold(pred_fn, plot_type="violin"):
-    """Start with a 9 (in the training set) and rotate it in steps of 20° until 180°.
-    By then it looks like a 6 (back in the training set). In between it wasn't like a
-    valid digit so a good Bayesian model should assign it increased uncertainty.
-
-    Args:
-        pred_fn ([type]): [description]
+    """Start with an MNIST 9 and rotate it 180° in steps of 20°. This
+    starts out on the training manifold, leaves it when the 9 lies on its
+    side and reenters it once we're at 180° and the 9 looks like a 6. In
+    the middle, it's an invalid digit so a good Bayesian model should
+    assign it increased uncertainty.
     """
     for idx in range(9):
         ax1 = plt.subplot(3, 3, idx + 1)
@@ -180,8 +179,9 @@ def exit_reenter_training_manifold(pred_fn, plot_type="violin"):
 
 # %%
 exit_reenter_training_manifold(lambda x: dropout_test(lenet_dropout, x))
-plt.savefig("rot9-mnf-lenet.svg", bbox_inches="tight")
+# plt.savefig("rot9-mnf-lenet.svg", bbox_inches="tight")
 
 
 # %%
 exit_reenter_training_manifold(lambda x: lenet(x), plot_type="bar")
+# plt.savefig("rot9-lenet.svg", bbox_inches="tight")

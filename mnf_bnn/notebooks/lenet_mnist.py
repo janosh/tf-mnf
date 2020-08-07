@@ -9,7 +9,7 @@ import tensorflow as tf
 from scipy.ndimage import rotate
 from tqdm import tqdm
 
-from mnf_bnn.models import LeNet, NFLeNet
+from mnf_bnn.models import LeNet, MNFLeNet
 
 # %%
 parser = argparse.ArgumentParser(allow_abbrev=False)
@@ -61,7 +61,7 @@ layer_args = [
     *["max_std", "flow_h_sizes", "std_init"],
 ]
 layer_args = {key: getattr(flags, key) for key in layer_args}
-nf_lenet = NFLeNet(**layer_args)
+mnf_lenet = MNFLeNet(**layer_args)
 
 adam = tf.optimizers.Adam(flags.learning_rate)
 
@@ -78,7 +78,7 @@ def loss_fn(labels, preds):
     # Decreasing it makes learning more difficult but prevents model overconfidence. If
     # not seen as hyperparameter, it should be applied once per epoch, i.e. divided by
     # the total number of samples in an epoch (batch_size * steps_per_epoch)
-    kl_loss = nf_lenet.kl_div() / (2 * flags.batch_size)
+    kl_loss = mnf_lenet.kl_div() / (2 * flags.batch_size)
 
     tf.summary.scalar("negative log-likelihood", entropic_loss)
     tf.summary.scalar("KL regularization loss", kl_loss)
@@ -87,18 +87,20 @@ def loss_fn(labels, preds):
 
 
 # %%
-nf_lenet.compile(loss=loss_fn, optimizer=adam, metrics=["accuracy"])
+mnf_lenet.compile(loss=loss_fn, optimizer=adam, metrics=["accuracy"])
 
 fit_args = {k: getattr(flags, k) for k in ["batch_size", "epochs", "steps_per_epoch"]}
-nf_hist = nf_lenet.fit(X_train, y_train, **fit_args, validation_split=0.1)
+nf_hist = mnf_lenet.fit(X_train, y_train, **fit_args, validation_split=0.1)
 
 
 # %%
 @tf.function
-def predict_nf_lenet(X=X_test, n_samples=flags.test_samples):
+def predict_mnf_lenet(X=X_test, n_samples=flags.test_samples):
     preds = []
     for _ in tqdm(range(n_samples), desc="Sampling"):
-        preds.append(nf_lenet(X))
+        # Set training=False for layers like BatchNormalization or Dropout that behave
+        # differently during inference. None used in MNFLeNet but could be added later.
+        preds.append(mnf_lenet(X, training=False))
     return tf.squeeze(preds)
 
 
@@ -124,7 +126,7 @@ for i, ax1 in enumerate(axes.flat):
     pic9_rot = rotate(pic9, i * 20, reshape=False)
 
     # Insert batch and channel dimension.
-    y_pred = predict_nf_lenet(pic9_rot[None, ..., None])
+    y_pred = predict_mnf_lenet(pic9_rot[None, ..., None])
     df = pd.DataFrame(y_pred.numpy()).melt(var_name="digit", value_name="softmax")
     # scale="count": Width of violins given by the number of observations in that bin.
     # cut=0: Limit the violin range to the range of observed data.
@@ -174,17 +176,17 @@ def train_step(images, labels):
     with tf.GradientTape() as tape:
         # We could draw multiple posterior samples here to get unbiased Monte Carlo
         # estimate for the NLL which would decrease training variance but slow us down.
-        preds = nf_lenet(images)
+        preds = mnf_lenet(images)
         loss = loss_fn(labels, preds)
         tf.summary.scalar("VI lower bound loss (NLL + KL)", loss)
-    grads = tape.gradient(loss, nf_lenet.trainable_variables)
-    adam.apply_gradients(zip(grads, nf_lenet.trainable_variables))
+    grads = tape.gradient(loss, mnf_lenet.trainable_variables)
+    adam.apply_gradients(zip(grads, mnf_lenet.trainable_variables))
 
     train_acc = tf.reduce_mean(tf.metrics.categorical_accuracy(labels, preds))
     return train_acc
 
 
-def train_nf_lenet():
+def train_mnf_lenet():
     for epoch in range(flags.epochs):
         for j in tqdm(
             range(flags.steps_per_epoch), desc=f"epoch {epoch + 1}/{flags.epochs}"
@@ -197,7 +199,7 @@ def train_nf_lenet():
         # Accuracy estimated by single call for speed. Would be more accurate to
         # approximately integrate over the parameter posteriors by averaging across
         # multiple calls.
-        y_val_pred = nf_lenet(X_val)
+        y_val_pred = mnf_lenet(X_val)
         val_acc = tf.reduce_mean(tf.metrics.categorical_accuracy(y_val, y_val_pred))
 
         tf.summary.scalar("validation accuracy", val_acc)
@@ -211,5 +213,5 @@ log_writer = tf.summary.create_file_writer(
 )
 log_writer.set_as_default()
 
-train_nf_lenet()
+train_mnf_lenet()
 """

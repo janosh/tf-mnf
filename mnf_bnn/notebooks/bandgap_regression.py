@@ -77,7 +77,9 @@ hist = model.fit(X_train.values, y_train.values, **fit_args)
 def predict(X=X_test.values, n_samples=flags.test_samples):
     preds = []
     for i in tqdm(range(n_samples), desc="Sampling"):
-        preds.append(model(X))
+        # Set training=False for layers like BatchNormalization or Dropout that behave
+        # differently during inference.
+        preds.append(model(X, training=False))
     return tf.squeeze(preds)
 
 

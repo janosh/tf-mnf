@@ -12,7 +12,8 @@ class MNFFeedForward(tf.keras.Sequential):
         super().__init__(layers + [DenseMNF(layer_sizes[-1], **kwargs)])
 
     def kl_div(self):
-        """Compute current KL divergence of the whole model.
-        Can be used as a regularization term during training.
+        """Compute current KL divergence of the whole model. Should be included
+        as a regularization term in the loss function. Tensorflow will issue
+        warnings "Gradients do not exist for variables of DenseMNF" if you forget.
         """
         return sum([lyr.kl_div() for lyr in self.layers if hasattr(lyr, "kl_div")])
