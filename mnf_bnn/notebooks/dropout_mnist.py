@@ -1,10 +1,7 @@
 # %%
 import matplotlib.pyplot as plt
-import pandas as pd
-import seaborn as sns
 import torch
 import torch.nn.functional as F
-from scipy.ndimage import rotate
 from torch import nn
 from torch.utils.data import DataLoader
 from torchvision.datasets import MNIST
@@ -12,6 +9,7 @@ from torchvision.transforms import ToTensor
 from tqdm import tqdm
 
 from mnf_bnn import ROOT
+from mnf_bnn.evaluate import np2torch2np, rot_img
 
 # %%
 plt.rcParams["figure.figsize"] = [12, 8]
@@ -132,47 +130,12 @@ test(lenet_dropout, test_loader)
 
 
 # %%
-def rot_pic(pred_fn, pic, plot_type="violin"):
-    """Rotate an image 180° in steps of 20°. For the example of an MNIST 9
-    digit, this starts out on the training manifold, leaves it when the 9
-    lies on its side and reenters it once we're at 180° and the 9 looks like
-    a 6. In the middle, it's an invalid digit so a good Bayesian model should
-    assign it increased uncertainty.
-    """
-    for idx in range(9):
-        ax1 = plt.subplot(3, 3, idx + 1)
+img9 = test_set[7][0]
 
-        pic_rot = rotate(pic, idx * 20, reshape=False, axes=[1, 2])
-
-        # insert batch dim
-        preds = pred_fn(torch.from_numpy(pic_rot)[None, ...])
-
-        preds = F.softmax(preds).detach().numpy()
-
-        df = pd.DataFrame(preds).melt(var_name="digit", value_name="softmax")
-        # scale="count": set violin width according to number of predictions in that bin
-        # cut=0: limit the violin range to the range of observed data
-        if plot_type == "violin":
-            sns.violinplot(
-                data=df, x="digit", y="softmax", scale="count", cut=0, ax=ax1
-            )
-        elif plot_type == "bar":
-            sns.barplot(data=df, x="digit", y="softmax", ax=ax1)
-
-        ax1.set(ylim=[None, 1.1], title=f"mean max: {preds.mean(0).argmax()}")
-        ax2 = ax1.inset_axes([0, 0.5, 0.4, 0.4])
-        ax2.axis("off")
-        ax2.imshow(pic_rot.squeeze(), cmap="gray")
-
-    plt.tight_layout()
-
-
-# %%
-pic = test_set[7][0]
-rot_pic(lambda x: lenet_dropout(x.repeat(50, 1, 1, 1)), pic)
+rot_img(np2torch2np(lambda x: F.softmax(lenet_dropout(x.repeat(50, 1, 1, 1)))), img9)
 # plt.savefig("rot9-mnf-lenet.svg", bbox_inches="tight")
 
 
 # %%
-rot_pic(lambda x: lenet(x), pic, plot_type="bar")
+rot_img(np2torch2np(lambda x: F.softmax(lenet(x))), img9, plot_type="bar")
 # plt.savefig("rot9-lenet.svg", bbox_inches="tight")

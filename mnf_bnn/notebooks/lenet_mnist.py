@@ -4,15 +4,15 @@ from datetime import datetime
 
 import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
-import seaborn as sns
 import tensorflow as tf
-from scipy.ndimage import rotate
 from tqdm import tqdm
 
+from mnf_bnn.evaluate import rot_img
 from mnf_bnn.models import LeNet, MNFLeNet
 
 # %%
+plt.rcParams["figure.figsize"] = [12, 8]
+
 parser = argparse.ArgumentParser(allow_abbrev=False)
 # TensorBoard log directory
 parser.add_argument("-logdir", type=str, default="logs/lenet/")
@@ -95,24 +95,8 @@ nf_hist = mnf_lenet.fit(X_train, y_train, **fit_args, validation_split=0.1)
 
 
 # %%
-pic9 = X_test[12]
-
-
-# %%
-fig, axes = plt.subplots(3, 3, figsize=(12, 8))
-for i, ax1 in enumerate(axes.flat):
-    pic9_rot = rotate(pic9, i * 20, reshape=False)
-
-    # Insert batch and channel dimension.
-    y_pred = mnf_lenet(tf.tile(pic9_rot[None, ...], [50, 1, 1, 1]))
-    df = pd.DataFrame(y_pred.numpy()).melt(var_name="digit", value_name="softmax")
-    # scale="count": Width of violins given by the number of observations in that bin.
-    # cut=0: Limit the violin range to the range of observed data.
-    sns.violinplot(data=df, x="digit", y="softmax", scale="count", cut=0, ax=ax1)
-    ax1.set(ylim=[None, 1.1])
-    ax2 = ax1.inset_axes([0, 0.5, 0.4, 0.4])
-    ax2.axis("off")
-    ax2.imshow(pic9_rot.squeeze(), cmap="gray")
+img9 = X_test[12]
+rot_img(lambda x: mnf_lenet(x.repeat(50, axis=0)).numpy(), img9, axes=[1, 0])
 
 
 # %%
@@ -122,16 +106,7 @@ lenet_hist = lenet.fit(X_train, y_train)
 
 
 # %%
-fig, axes = plt.subplots(3, 3, figsize=(12, 8))
-for i, ax1 in enumerate(axes.flat):
-    pic9_rot = rotate(pic9, i * 20, reshape=False)
-
-    [y_pred] = lenet(pic9_rot[None, ...])
-    ax1.bar(range(10), y_pred)
-    ax1.set(ylim=[None, 1.1], xticks=range(10))
-    ax2 = ax1.inset_axes([0, 0.5, 0.4, 0.4])
-    ax2.axis("off")
-    ax2.imshow(pic9_rot.squeeze(), cmap="gray")
+rot_img(lambda x: lenet(x).numpy(), img9, plot_type="bar", axes=[1, 0])
 
 
 # Below is code for low-level training with tf.GradienTape. More verbose but easier to
