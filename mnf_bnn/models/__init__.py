@@ -1,3 +1,3 @@
-from mnf_bnn.models.feed_forward import MNFFeedForward  # noqa
-from mnf_bnn.models.lenet import LeNet  # noqa
-from mnf_bnn.models.mnf_lenet import MNFLeNet  # noqa
+from .lenet import LeNet
+from .mnf_feed_forward import MNFFeedForward
+from .mnf_lenet import MNFLeNet

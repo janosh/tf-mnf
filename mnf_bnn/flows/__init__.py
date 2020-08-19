@@ -1,8 +1,8 @@
 import tensorflow as tf
 
-from mnf_bnn.flows.maf import IAF, MAF, TFIAF, TFMAF  # noqa
-from mnf_bnn.flows.planar import PlanarFlow  # noqa
-from mnf_bnn.flows.rnvp import RNVP  # noqa
+from .maf import IAF, MAF, TFIAF, TFMAF
+from .planar import PlanarFlow
+from .rnvp import RNVP, AffineHalfFlow
 
 
 class NormalizingFlow(tf.Module):
