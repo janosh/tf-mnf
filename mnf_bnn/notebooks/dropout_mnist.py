@@ -4,9 +4,11 @@ import pandas as pd
 import seaborn as sns
 import torch
 import torch.nn.functional as F
-import torchvision as tv
+from scipy.ndimage import rotate
 from torch import nn
 from torch.utils.data import DataLoader
+from torchvision.datasets import MNIST
+from torchvision.transforms import ToTensor
 from tqdm import tqdm
 
 from mnf_bnn import ROOT
@@ -14,23 +16,21 @@ from mnf_bnn import ROOT
 # %%
 plt.rcParams["figure.figsize"] = [12, 8]
 
-# Download MNIST dataset if not already at data_dir.
 # tv.transforms.Normalize() seems to be unnecessary.
-to_tensor, to_pil = tv.transforms.ToTensor(), tv.transforms.ToPILImage()
-kwargs = dict(root=ROOT + "/data", transform=to_tensor, download=True)
-train_set = tv.datasets.MNIST(**kwargs, train=True)
-test_set = tv.datasets.MNIST(**kwargs, train=False)
+train_set, test_set = [
+    MNIST(root=ROOT + "/data", transform=ToTensor(), download=True, train=x)
+    for x in [True, False]
+]
 
-train_loader = DataLoader(
-    dataset=train_set, batch_size=32, shuffle=True, drop_last=True
-)
-test_loader = DataLoader(dataset=test_set, batch_size=32, shuffle=False, drop_last=True)
-
+train_loader, test_loader = [
+    DataLoader(dataset=x, batch_size=32, shuffle=True, drop_last=True)
+    for x in [train_set, test_set]
+]
 
 # %%
 for idx in range(5):
-    ax = plt.subplot(1, 5, idx + 1, title=f"ground truth: {train_set[idx][1]}")
-    ax.imshow(train_set[idx][0].squeeze(), cmap="gray")
+    ax = plt.subplot(1, 5, idx + 1, title=f"label: {train_set[idx][1]}")
+    ax.imshow(train_set.data[idx], cmap="gray")
     ax.axis("off")
 
 
@@ -132,30 +132,20 @@ test(lenet_dropout, test_loader)
 
 
 # %%
-def dropout_test(model, inputs, n_preds=100):
-    model.eval()
-    output = [model(inputs) for _ in range(n_preds)]
-    return torch.stack(output).squeeze()
-
-
-pic, target = test_set[7]
-
-
-# %%
-def exit_reenter_training_manifold(pred_fn, plot_type="violin"):
-    """Start with an MNIST 9 and rotate it 180° in steps of 20°. This
-    starts out on the training manifold, leaves it when the 9 lies on its
-    side and reenters it once we're at 180° and the 9 looks like a 6. In
-    the middle, it's an invalid digit so a good Bayesian model should
+def rot_pic(pred_fn, pic, plot_type="violin"):
+    """Rotate an image 180° in steps of 20°. For the example of an MNIST 9
+    digit, this starts out on the training manifold, leaves it when the 9
+    lies on its side and reenters it once we're at 180° and the 9 looks like
+    a 6. In the middle, it's an invalid digit so a good Bayesian model should
     assign it increased uncertainty.
     """
     for idx in range(9):
         ax1 = plt.subplot(3, 3, idx + 1)
 
-        pic9_rot = to_tensor(tv.transforms.functional.rotate(to_pil(pic), idx * 20))
+        pic_rot = rotate(pic, idx * 20, reshape=False, axes=[1, 2])
 
-        # insert batch dimension
-        preds = pred_fn(pic9_rot[None, ...])
+        # insert batch dim
+        preds = pred_fn(torch.from_numpy(pic_rot)[None, ...])
 
         preds = F.softmax(preds).detach().numpy()
 
@@ -172,16 +162,17 @@ def exit_reenter_training_manifold(pred_fn, plot_type="violin"):
         ax1.set(ylim=[None, 1.1], title=f"mean max: {preds.mean(0).argmax()}")
         ax2 = ax1.inset_axes([0, 0.5, 0.4, 0.4])
         ax2.axis("off")
-        ax2.imshow(pic9_rot.squeeze(), cmap="gray")
+        ax2.imshow(pic_rot.squeeze(), cmap="gray")
 
     plt.tight_layout()
 
 
 # %%
-exit_reenter_training_manifold(lambda x: dropout_test(lenet_dropout, x))
+pic = test_set[7][0]
+rot_pic(lambda x: lenet_dropout(x.repeat(50, 1, 1, 1)), pic)
 # plt.savefig("rot9-mnf-lenet.svg", bbox_inches="tight")
 
 
 # %%
-exit_reenter_training_manifold(lambda x: lenet(x), plot_type="bar")
+rot_pic(lambda x: lenet(x), pic, plot_type="bar")
 # plt.savefig("rot9-lenet.svg", bbox_inches="tight")

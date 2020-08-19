@@ -2,3 +2,4 @@
 logs
 .ipynb_checkpoints
 *.egg*
+data/MNIST

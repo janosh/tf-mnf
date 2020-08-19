@@ -1,5 +1,6 @@
 # %%
 import argparse
+from datetime import datetime
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -94,30 +95,7 @@ nf_hist = mnf_lenet.fit(X_train, y_train, **fit_args, validation_split=0.1)
 
 
 # %%
-@tf.function
-def predict_mnf_lenet(X=X_test, n_samples=flags.test_samples):
-    preds = []
-    for _ in tqdm(range(n_samples), desc="Sampling"):
-        # Set training=False for layers like BatchNormalization or Dropout that behave
-        # differently during inference. None used in MNFLeNet but could be added later.
-        preds.append(mnf_lenet(X, training=False))
-    return tf.squeeze(preds)
-
-
-# %%
-# Remove image's channel dimension.
-pic4 = X_test[4][..., 0]
-pic9 = X_test[12][..., 0]
-
-
-# %%
-fig, axes = plt.subplots(3, 3, figsize=(8, 8))
-fig.subplots_adjust(wspace=0, hspace=0.05)
-for i, ax in enumerate(axes.flat):
-    pic9_rot = rotate(pic9, i * 20, reshape=False)
-    ax.axis("off")
-    ax.imshow(pic9_rot, cmap="gray")
-    ax.set(title=f"{i * 20} deg")
+pic9 = X_test[12]
 
 
 # %%
@@ -126,7 +104,7 @@ for i, ax1 in enumerate(axes.flat):
     pic9_rot = rotate(pic9, i * 20, reshape=False)
 
     # Insert batch and channel dimension.
-    y_pred = predict_mnf_lenet(pic9_rot[None, ..., None])
+    y_pred = mnf_lenet(tf.tile(pic9_rot[None, ...], [50, 1, 1, 1]))
     df = pd.DataFrame(y_pred.numpy()).melt(var_name="digit", value_name="softmax")
     # scale="count": Width of violins given by the number of observations in that bin.
     # cut=0: Limit the violin range to the range of observed data.
@@ -134,7 +112,7 @@ for i, ax1 in enumerate(axes.flat):
     ax1.set(ylim=[None, 1.1])
     ax2 = ax1.inset_axes([0, 0.5, 0.4, 0.4])
     ax2.axis("off")
-    ax2.imshow(pic9_rot, cmap="gray")
+    ax2.imshow(pic9_rot.squeeze(), cmap="gray")
 
 
 # %%
@@ -148,15 +126,14 @@ fig, axes = plt.subplots(3, 3, figsize=(12, 8))
 for i, ax1 in enumerate(axes.flat):
     pic9_rot = rotate(pic9, i * 20, reshape=False)
 
-    [y_pred] = lenet.predict(pic9_rot[None, ..., None])
+    [y_pred] = lenet(pic9_rot[None, ...])
     ax1.bar(range(10), y_pred)
     ax1.set(ylim=[None, 1.1], xticks=range(10))
     ax2 = ax1.inset_axes([0, 0.5, 0.4, 0.4])
     ax2.axis("off")
-    ax2.imshow(pic9_rot, cmap="gray")
+    ax2.imshow(pic9_rot.squeeze(), cmap="gray")
 
 
-"""
 # Below is code for low-level training with tf.GradienTape. More verbose but easier to
 # debug, especially with @tf.function commented out.
 
@@ -164,14 +141,14 @@ for i, ax1 in enumerate(axes.flat):
 # %%
 # Create 10000-sample validation set. Leaves 50000 samples for training.
 try:
-    X_val, y_val
+    X_val, y_val  # type: ignore
 except NameError:
     X_train, X_val = np.split(X_train, [50000])
     y_train, y_val = np.split(y_train, [50000])
 
 
 # %%
-@tf.function
+# @tf.function
 def train_step(images, labels):
     with tf.GradientTape() as tape:
         # We could draw multiple posterior samples here to get unbiased Monte Carlo
@@ -206,12 +183,9 @@ def train_mnf_lenet():
         print(f"Validation accuracy: {val_acc:.4g}")
 
 
-# %%
-from datetime import datetime
 log_writer = tf.summary.create_file_writer(
     flags.logdir + datetime.now().strftime("%Y.%m.%d-%H:%M:%S")
 )
 log_writer.set_as_default()
 
 train_mnf_lenet()
-"""
