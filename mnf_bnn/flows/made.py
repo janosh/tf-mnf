@@ -1,6 +1,6 @@
 """
-Implements a Masked Autoregressive MLP, where carefully constructed
-binary masks over weights ensure the autoregressive property.
+Implements a Masked Autoregressive Density Estimator, where carefully
+constructed binary masks over weights ensure autoregressivity.
 Adapted from https://github.com/karpathy/pytorch-made.
 """
 
@@ -29,7 +29,7 @@ class MaskedDense(tf.keras.layers.Dense):
 
 class MADE(tf.keras.layers.Layer):
     """Masked Autoencoder for Distribution Estimation masks the autoencoder’s
-    parameters to respect autoregressive constraints: each input is reconstructed
+    parameters to respect autoregressive constraints: each output is reconstructed
     only from previous inputs in a given ordering. Constrained this way, the
     autoencoder outputs can be interpreted as a set of conditional probabilities and
     their product as the full joint probability. We can also train a single network
@@ -41,16 +41,16 @@ class MADE(tf.keras.layers.Layer):
     def __init__(self, n_outputs=1, h_sizes=[], num_masks=1, shuffle=False, **kwargs):
         """
         n_in (int): number of inputs
-        h_sizes (list of ints): number of units in hidden layers
+        h_sizes (list[int]): number of units in hidden layers
         n_out (int): number of outputs, which usually collectively parameterize some
             kind of 1D distribution
             note: if n_out is e.g. 2x larger than n_in (perhaps the mean and std), then
             the first n_in will be all the means and the second n_in will be stds. i.e.
             output dimensions depend on the same input dimensions in "chunks" and should
-            be carefully decoded downstream appropriately. the output of runn_ing the
+            be carefully decoded downstream appropriately. The output of running the
             tests for this file makes this a bit more clear with examples.
-        num_masks: can be used to train ensemble over orderings/connections
-        shuffle: Whether to apply a random permutation to the input ordering.
+        num_masks (int): can be used to train ensemble over orderings/connections
+        shuffle (bool): Whether to apply a random permutation to the input ordering.
         """
         super().__init__(**kwargs)
         self.n_outputs = n_outputs
@@ -66,8 +66,7 @@ class MADE(tf.keras.layers.Layer):
         layers = []
         for size in self.h_sizes + [self.n_in * self.n_outputs]:
             layers.extend([MaskedDense(size), tf.keras.layers.ReLU()])
-        layers.pop()  # Pop the last ReLU to get an affine output layer.
-        self.net = tf.keras.Sequential(layers)
+        self.net = tf.keras.Sequential(layers[:-1])  # drop last ReLU
 
         self.m = {}
         self.set_masks()  # Build the initial self.m connectivity

@@ -107,6 +107,7 @@ class Conv2DMNF(tf.keras.layers.Layer):
 
         if self.n_flows_q > 0:
             z_samples, log_dets = self.flow_q.forward(z_samples)
+            z_samples = z_samples[-1]
 
         return z_samples, log_dets
 
