@@ -8,8 +8,8 @@ from torchvision.datasets import MNIST
 from torchvision.transforms import ToTensor
 from tqdm import tqdm
 
-from mnf_bnn import ROOT
-from mnf_bnn.evaluate import np2torch2np, rot_img
+from tf_mnf import ROOT
+from tf_mnf.evaluate import np2torch2np, rot_img
 
 # %%
 plt.rcParams["figure.figsize"] = [12, 8]

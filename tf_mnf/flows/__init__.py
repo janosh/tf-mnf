@@ -2,7 +2,7 @@ import tensorflow as tf
 
 from .maf import IAF, MAF, TFIAF, TFMAF
 from .planar import PlanarFlow
-from .rnvp import RNVP, AffineHalfFlow
+from .rnvp import RNVP
 
 
 class NormalizingFlow(tf.Module):

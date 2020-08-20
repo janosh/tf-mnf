@@ -7,7 +7,7 @@ import seaborn as sns
 import tensorflow as tf
 from tqdm import tqdm
 
-from mnf_bnn import ROOT, models
+from tf_mnf import ROOT, models
 
 # %%
 parser = argparse.ArgumentParser(allow_abbrev=False)

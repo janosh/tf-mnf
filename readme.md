@@ -1,14 +1,14 @@
-# MNF-BNN
+# TF-MNF
 
 <img src="assets/normalizing-flow.svg" alt="Normalizing Flow" align="right" height="150">
 
-Re-implementation of Multiplicative Normalizing Flows (MNF) in TensorFlow 2.0. MNF is a Bayesian neural network variant introduced in [[1]](#mnf-bnn) with auxiliary random variables and a factorial Gaussian posterior with means `mu_i` conditioned on scaling factors `z_i` modelled by normalizing flows.
+TensorFlow 2.0 implementation of Multiplicative Normalizing Flows (MNF). MNF is a Bayesian neural network variant introduced in [[1]](#tf-mnf) with auxiliary random variables and a factorial Gaussian posterior with means `mu_i` conditioned on scaling factors `z_i` modelled by normalizing flows.
 
 Implements the planar [[3]](#vi-nf), RNVP [[4]](#rnvp) and MAF [[5]](#maf) flow. MAF uses the MADE autoregressive network architecture introduced in [[2]](#made)
 
 ## References
 
-1. <a id="mnf-bnn"></a> **_Multiplicative Normalizing Flows for Variational Bayesian Neural Networks_** | Christos Louizos, Max Welling (Mar 2017) | [1703.01961](https://arxiv.org/abs/1703.01961)
+1. <a id="mnf-vbnn"></a> **_Multiplicative Normalizing Flows for Variational Bayesian Neural Networks_** | Christos Louizos, Max Welling (Mar 2017) | [1703.01961](https://arxiv.org/abs/1703.01961)
 
 2. <a id="made"></a> **_MADE: Masked Autoencoder for Distribution Estimation_** | Mathieu Germain, Karol Gregor, Iain Murray, Hugo Larochelle (Jun 2015) | [1502.03509](https://arxiv.org/abs/1502.03509)
 
@@ -28,7 +28,7 @@ Implements the planar [[3]](#vi-nf), RNVP [[4]](#rnvp) and MAF [[5]](#maf) flow.
 
 A good test for Bayesian vision models is to take an MNIST 9 **and** rotate it in steps of 20 degree until we're back to a 6. This evaluates how the model and its uncertainty estimates perform as we slowly exit and then re-enter the training manifold.
 
-The plots show how MNF applied to a [LeNet model](http://yann.lecun.com/exdb/lenet) compares to an unmodified LeNet. The code for these plots is found in [`notebooks/lenet_mnist.py`](https://github.com/janosh/mnf-bnn/blob/master/notebooks/lenet_mnist.py).
+The plots show how MNF applied to a [LeNet model](http://yann.lecun.com/exdb/lenet) compares to an unmodified LeNet. The code for these plots is found in [`notebooks/lenet_mnist.py`](/tf_mnf/notebooks/lenet_mnist.py).
 
 In the top left, both models start out almost certain they're being shown a 9. A rotation of 20 degree already causes the MNF-LeNet to allocate small probabilities to other digits. The middle row is the most interesting since we're farthest away from the training manifold. MNF-LeNet distributes its softmax more evenly whereas the regular LeNet tends to focus its prediction on a single digit.
 
@@ -38,15 +38,15 @@ While the regular LeNet only outputs point estimates, the Bayesian MNF-LeNet ret
 
 The environment file `env.yml` was generated with `conda env export --no-builds > env.yml`. To recreate the environment from this file run `conda env create -f env.yml`.
 
-The environment `mnf-bnn` was originally created by running the command:
+The environment `tf-mnf` was originally created by running the command:
 
 ```sh
-conda create -n mnf-bnn python=3.6 \
-  && conda activate mnf-bnn \
+conda create -n tf-mnf python=3.6 \
+  && conda activate tf-mnf \
   && pip install tensorflow tensorflow-probability jupyter tqdm seaborn
 ```
 
-To delete the environment run `conda env remove -n mnf-bnn`.
+To delete the environment run `conda env remove -n tf-mnf`.
 
 To update all packages and reflect changes in this file use
 

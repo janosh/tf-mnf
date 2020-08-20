@@ -7,8 +7,8 @@ import numpy as np
 import tensorflow as tf
 from tqdm import tqdm
 
-from mnf_bnn.evaluate import rot_img
-from mnf_bnn.models import LeNet, MNFLeNet
+from tf_mnf.evaluate import rot_img
+from tf_mnf.models import LeNet, MNFLeNet
 
 # %%
 plt.rcParams["figure.figsize"] = [12, 8]
