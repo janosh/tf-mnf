@@ -15,7 +15,7 @@ plt.rcParams["figure.figsize"] = [12, 8]
 
 parser = argparse.ArgumentParser(allow_abbrev=False)
 # TensorBoard log directory
-parser.add_argument("-logdir", type=str, default="logs/lenet/")
+parser.add_argument("-logdir", type=str, default="/logs/lenet")
 parser.add_argument("-epochs", type=int, default=3)
 parser.add_argument("-steps_per_epoch", type=int, default=300)
 parser.add_argument("-batch_size", type=int, default=64)
@@ -159,7 +159,7 @@ def train_mnf_lenet():
 
 
 log_writer = tf.summary.create_file_writer(
-    flags.logdir + datetime.now().strftime("%Y.%m.%d-%H:%M:%S")
+    f"{flags.logdir}/{datetime.now():%m.%d-%H:%M:%S}"
 )
 log_writer.set_as_default()
 

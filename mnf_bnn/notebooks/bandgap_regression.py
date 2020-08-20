@@ -1,5 +1,6 @@
 # %%
 import argparse
+from datetime import datetime
 
 import pandas as pd
 import seaborn as sns
@@ -90,26 +91,13 @@ preds["Eg (eV)"] = y_test.values
 
 
 # %%
-sns.pointplot(
-    x="Eg (eV)",
-    y="y_pred",
-    data=preds.melt(id_vars=["Composition", "Eg (eV)"], value_name="y_pred"),
-)
+melted = preds.melt(id_vars=["Composition", "Eg (eV)"], value_name="y_pred")
+sns.pointplot(x="Eg (eV)", y="y_pred", data=melted)
 
 
 # %%
-"""
 # Below is code for low-level training with tf.GradienTape. More verbose but easier to
 # debug, especially with @tf.function commented out.
-
-
-# %%
-try:
-    X_val, y_val
-except Namerror:
-    X_val = X_test.sample(frac=0.5, random_state=flags.seed)
-    X_test = X_test.drop(X_val.index)
-    y_val, y_test = [bandgaps[X.index] for X in [X_val, X_test]]
 
 
 # %%
@@ -138,19 +126,17 @@ def train():
         # Accuracy estimated by single call for speed. Would be more accurate to
         # approximately integrate over the parameter posteriors by averaging across
         # multiple calls.
-        y_val_pred = model(X_val.values)
-        val_acc = tf.reduce_mean(tf.metrics.mae(y_val.values, y_val_pred))
+        y_val_pred = model(X_test.values)
+        val_acc = tf.reduce_mean(tf.metrics.mae(y_test.values, y_val_pred))
 
         tf.summary.scalar("MAE validation", val_acc)
         print(f"MAE on validation set: {val_acc:.4g} eV")
 
 
 # %%
-from datetime import datetime
 log_writer = tf.summary.create_file_writer(
-    flags.logdir + datetime.now().strftime("%Y.%m.%d-%H:%M:%S")
+    f"{flags.logdir}/{datetime.now():%m.%d-%H:%M:%S}"
 )
 log_writer.set_as_default()
 
 train()
-"""
