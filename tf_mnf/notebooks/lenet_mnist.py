@@ -15,9 +15,8 @@ plt.rcParams["figure.figsize"] = [12, 8]
 
 parser = argparse.ArgumentParser(allow_abbrev=False)
 # TensorBoard log directory
-parser.add_argument("-logdir", type=str, default="/logs/lenet")
+parser.add_argument("-logdir", type=str, default="logs/lenet")
 parser.add_argument("-epochs", type=int, default=3)
-parser.add_argument("-steps_per_epoch", type=int, default=300)
 parser.add_argument("-batch_size", type=int, default=64)
 # Whether to use auxiliary random variable z ~ q(z) to increase expressivity of
 # weight posteriors q(W|z).
@@ -78,8 +77,8 @@ def loss_fn(labels, preds):
     # The weighting factor dividing the KL divergence can be used as a hyperparameter.
     # Decreasing it makes learning more difficult but prevents model overconfidence. If
     # not seen as hyperparameter, it should be applied once per epoch, i.e. divided by
-    # the total number of samples in an epoch (batch_size * steps_per_epoch)
-    kl_loss = mnf_lenet.kl_div() / (2 * flags.batch_size)
+    # number of samples.
+    kl_loss = mnf_lenet.kl_div() / len(X_train)
 
     tf.summary.scalar("negative log-likelihood", entropic_loss)
     tf.summary.scalar("KL regularization loss", kl_loss)
@@ -90,13 +89,19 @@ def loss_fn(labels, preds):
 # %%
 mnf_lenet.compile(loss=loss_fn, optimizer=adam, metrics=["accuracy"])
 
-fit_args = {k: getattr(flags, k) for k in ["batch_size", "epochs", "steps_per_epoch"]}
-nf_hist = mnf_lenet.fit(X_train, y_train, **fit_args, validation_split=0.1)
+# %%
+nf_hist = mnf_lenet.fit(
+    X_train,
+    y_train,
+    epochs=flags.epochs,
+    batch_size=flags.batch_size,
+    validation_split=0.1,
+)
 
 
 # %%
 img9 = X_test[12]
-rot_img(lambda x: mnf_lenet(x.repeat(50, axis=0)).numpy(), img9, axes=[1, 0])
+rot_img(lambda x: mnf_lenet(x.repeat(500, axis=0)).numpy(), img9, axes=[1, 0])
 
 
 # %%
@@ -114,16 +119,7 @@ rot_img(lambda x: lenet(x).numpy(), img9, plot_type="bar", axes=[1, 0])
 
 
 # %%
-# Create 10000-sample validation set. Leaves 50000 samples for training.
-try:
-    X_val, y_val  # type: ignore
-except NameError:
-    X_train, X_val = np.split(X_train, [50000])
-    y_train, y_val = np.split(y_train, [50000])
-
-
-# %%
-# @tf.function
+@tf.function
 def train_step(images, labels):
     with tf.GradientTape() as tape:
         # We could draw multiple posterior samples here to get unbiased Monte Carlo
@@ -135,27 +131,22 @@ def train_step(images, labels):
     adam.apply_gradients(zip(grads, mnf_lenet.trainable_variables))
 
     train_acc = tf.reduce_mean(tf.metrics.categorical_accuracy(labels, preds))
-    return train_acc
+    return loss, train_acc
 
 
-def train_mnf_lenet():
+def train_mnf_lenet(log_every=50):
     for epoch in range(flags.epochs):
-        for j in tqdm(
-            range(flags.steps_per_epoch), desc=f"epoch {epoch + 1}/{flags.epochs}"
-        ):
-            batch = np.random.choice(len(X_train), flags.batch_size, replace=False)
-            tf.summary.experimental.set_step(adam.iterations)
-            train_acc = train_step(X_train[batch], y_train[batch])
-            tf.summary.scalar("training accuracy", train_acc)
+        idx = np.arange(len(y_train))
+        np.random.shuffle(idx)
+        batches = np.split(idx, len(y_train) / flags.batch_size)
+        pbar = tqdm(batches, desc=f"epoch {epoch + 1}/{flags.epochs}")
+        for step, batch in enumerate(pbar):
+            loss, train_acc = train_step(X_train[batch], y_train[batch])
 
-        # Accuracy estimated by single call for speed. Would be more accurate to
-        # approximately integrate over the parameter posteriors by averaging across
-        # multiple calls.
-        y_val_pred = mnf_lenet(X_val)
-        val_acc = tf.reduce_mean(tf.metrics.categorical_accuracy(y_val, y_val_pred))
-
-        tf.summary.scalar("validation accuracy", val_acc)
-        print(f"Validation accuracy: {val_acc:.4g}")
+            if step % log_every == 0:
+                tf.summary.experimental.set_step(adam.iterations)
+                tf.summary.scalar("accuracy/training", train_acc)
+                pbar.set_postfix(loss=f"{loss:.4g}", train_acc=f"{train_acc:.4g}")
 
 
 log_writer = tf.summary.create_file_writer(
