@@ -7,8 +7,8 @@ import numpy as np
 import tensorflow as tf
 from tqdm import tqdm
 
+from tf_mnf import models  # ,ROOT
 from tf_mnf.evaluate import rot_img
-from tf_mnf.models import LeNet, MNFLeNet
 
 # %%
 plt.rcParams["figure.figsize"] = [12, 8]
@@ -61,29 +61,30 @@ layer_args = [
     *["max_std", "flow_h_sizes", "std_init"],
 ]
 layer_args = {key: getattr(flags, key) for key in layer_args}
-mnf_lenet = MNFLeNet(**layer_args)
+mnf_lenet = models.MNFLeNet(**layer_args)
 
 adam = tf.optimizers.Adam(flags.learning_rate)
 
 
 # %%
+# We minimize the negative log-likelihood, i.e. maximize the log-likelihood of
+# observed data (X_train, y_train) under the model
 def loss_fn(labels, preds):
-    # Returns minus the evidence lower bound (ELBO) which we minimize. This implicitly
-    # maximizes the log-likelihood of observed data (X_train, y_train) under the model.
-
-    # entropic_loss is the multiclass cross entropy aka negative log-likelihood.
+    # entropic_loss = multiclass cross entropy = negative log-likelihood.
     cross_entropy = tf.losses.categorical_crossentropy(labels, preds)
     entropic_loss = tf.reduce_mean(cross_entropy)
     # The weighting factor dividing the KL divergence can be used as a hyperparameter.
-    # Decreasing it makes learning more difficult but prevents model overconfidence. If
+    # Decreasing it makes learning more difficult but prevents model overfitting. If
     # not seen as hyperparameter, it should be applied once per epoch, i.e. divided by
-    # number of samples.
+    # the number of samples in one epoch.
     kl_loss = mnf_lenet.kl_div() / len(X_train)
+    loss = entropic_loss + kl_loss
 
     tf.summary.scalar("negative log-likelihood", entropic_loss)
-    tf.summary.scalar("KL regularization loss", kl_loss)
+    tf.summary.scalar("KL divergence", kl_loss)
+    tf.summary.scalar("loss", loss)
 
-    return entropic_loss + kl_loss
+    return loss
 
 
 # %%
@@ -102,20 +103,24 @@ nf_hist = mnf_lenet.fit(
 # %%
 img9 = X_test[12]
 rot_img(lambda x: mnf_lenet(x.repeat(500, axis=0)).numpy(), img9, axes=[1, 0])
+# plt.savefig(ROOT + "/assets/rot-9-mnf-lenet.pdf")
 
 
 # %%
-lenet = LeNet()
+lenet = models.LeNet()
 lenet.compile(optimizer="adam", loss="categorical_crossentropy", metrics=["accuracy"])
-lenet_hist = lenet.fit(X_train, y_train)
+
+
+# %%
+lenet_hist = lenet.fit(X_train, y_train, epochs=flags.epochs)
 
 
 # %%
 rot_img(lambda x: lenet(x).numpy(), img9, plot_type="bar", axes=[1, 0])
+# plt.savefig(ROOT + "/assets/rot-9-lenet.pdf")
 
-
-# Below is code for low-level training with tf.GradienTape. More verbose but easier to
-# debug, especially with @tf.function commented out.
+# Below is code for low-level training with tf.GradientTape(). Slower and more verbose
+# but easier to debug, especially with @tf.function commented out.
 
 
 # %%
