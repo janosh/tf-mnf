@@ -1,5 +1,4 @@
 # %%
-import argparse
 from datetime import datetime
 
 import matplotlib.pyplot as plt
@@ -13,29 +12,8 @@ from tf_mnf.evaluate import rot_img
 # %%
 plt.rcParams["figure.figsize"] = [12, 8]
 
-parser = argparse.ArgumentParser(allow_abbrev=False)
-# TensorBoard log directory
-parser.add_argument("-logdir", type=str, default="logs/lenet")
-parser.add_argument("-epochs", type=int, default=3)
-parser.add_argument("-batch_size", type=int, default=64)
-# Whether to use auxiliary random variable z ~ q(z) to increase expressivity of
-# weight posteriors q(W|z).
-parser.add_argument("-use_z", action="store_false")
-parser.add_argument("-n_flows_q", type=int, default=2)
-parser.add_argument("-n_flows_r", type=int, default=2)
-# Random seed to ensure reproducible results.
-parser.add_argument("-seed", type=int, default=0)
-parser.add_argument("-learning_rate", type=float, default=1e-3)
-# Maximum stddev for layer weights. Larger values will be clipped at call time.
-parser.add_argument("-max_std", type=float, default=1)
-# How many and what size of dense layers to use in the multiplicative normalizing flow.
-parser.add_argument("-flow_h_sizes", type=int, default=[50])
-# How many predictions to make at test time. More yield better uncertainty estimates.
-parser.add_argument("-test_samples", type=int, default=50)
-parser.add_argument("-learn_p", action="store_true")
-# Scaling factor for initial stddev of Glorot-normal initialized tf.Variables.
-parser.add_argument("-std_init", type=float, default=1e1)
-flags, _ = parser.parse_known_args()
+epochs = 3
+batch_size = 64
 
 
 # %%
@@ -51,19 +29,19 @@ X_train, X_test = X_train[..., None], X_test[..., None]
 # One-hot encode the labels.
 y_train, y_test = [tf.keras.utils.to_categorical(y, 10) for y in [y_train, y_test]]
 
-tf.random.set_seed(flags.seed)
-np.random.seed(flags.seed)
+# ensure reproducible results
+tf.random.set_seed(0)
+np.random.seed(0)
 
 
 # %%
-layer_args = [
-    *["use_z", "n_flows_q", "n_flows_r", "learn_p"],
-    *["max_std", "flow_h_sizes", "std_init"],
-]
-layer_args = {key: getattr(flags, key) for key in layer_args}
-mnf_lenet = models.MNFLeNet(**layer_args)
+mnf_lenet = models.MNFLeNet(
+    max_std=1,  # Max stddev for layer weights. Larger values are clipped at call time
+    flow_h_sizes=[50],  # How many and what size of dense layers to use for the NF nets
+    std_init=1e1,  # Scaling factor for initial stddev of tf.Variables
+)
 
-adam = tf.optimizers.Adam(flags.learning_rate)
+adam = tf.optimizers.Adam(1e-3)
 
 
 # %%
@@ -92,17 +70,14 @@ mnf_lenet.compile(loss=loss_fn, optimizer=adam, metrics=["accuracy"])
 
 # %%
 nf_hist = mnf_lenet.fit(
-    X_train,
-    y_train,
-    epochs=flags.epochs,
-    batch_size=flags.batch_size,
-    validation_split=0.1,
+    X_train, y_train, epochs=epochs, batch_size=batch_size, validation_split=0.1
 )
 
 
 # %%
 img9 = X_test[12]
-rot_img(lambda x: mnf_lenet(x.repeat(500, axis=0)).numpy(), img9, axes=[1, 0])
+test_samples = 500
+rot_img(lambda x: mnf_lenet(x.repeat(test_samples, axis=0)).numpy(), img9, axes=[1, 0])
 # plt.savefig(ROOT + "/assets/rot-9-mnf-lenet.pdf")
 
 
@@ -112,7 +87,7 @@ lenet.compile(optimizer="adam", loss="categorical_crossentropy", metrics=["accur
 
 
 # %%
-lenet_hist = lenet.fit(X_train, y_train, epochs=flags.epochs)
+lenet_hist = lenet.fit(X_train, y_train, epochs=epochs)
 
 
 # %%
@@ -140,11 +115,11 @@ def train_step(images, labels):
 
 
 def train_mnf_lenet(log_every=50):
-    for epoch in range(flags.epochs):
+    for epoch in range(epochs):
         idx = np.arange(len(y_train))
         np.random.shuffle(idx)
-        batches = np.split(idx, len(y_train) / flags.batch_size)
-        pbar = tqdm(batches, desc=f"epoch {epoch + 1}/{flags.epochs}")
+        batches = np.split(idx, len(y_train) / batch_size)
+        pbar = tqdm(batches, desc=f"epoch {epoch + 1}/{epochs}")
         for step, batch in enumerate(pbar):
             loss, train_acc = train_step(X_train[batch], y_train[batch])
 
@@ -155,7 +130,7 @@ def train_mnf_lenet(log_every=50):
 
 
 log_writer = tf.summary.create_file_writer(
-    f"{flags.logdir}/{datetime.now():%m.%d-%H:%M:%S}"
+    f"logs/lenet/{datetime.now():%m.%d-%H:%M:%S}"
 )
 log_writer.set_as_default()
 
