@@ -87,7 +87,7 @@ def train(model, loader, epochs=1, print_every=50, **kwargs):
             loss.backward()
             optimizer.step()
             # if batch % print_every == 0:
-            #     print(f"{epoch + 1}/{epochs}\t{batch}/{len(loader)}\t\t{loss:.4g}")
+            #     print(f"{epoch + 1}/{epochs}\t{batch}/{len(loader)}\t\t{loss:.4}")
 
 
 def test(model, loader):
@@ -100,8 +100,8 @@ def test(model, loader):
         correct += (preds == targets).sum()
 
     print(
-        f"\n\nAvg. test loss: {test_loss / len(loader):.4g}, "
-        f"Accuracy: {int(correct) / len(test_loader.dataset):.2g}"
+        f"\n\nAvg. test loss: {test_loss / len(loader):.4}, "
+        f"Accuracy: {int(correct) / len(test_loader.dataset):.2}"
     )
 
 

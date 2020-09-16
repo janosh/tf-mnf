@@ -130,7 +130,7 @@ def train():
         val_acc = tf.reduce_mean(tf.metrics.mae(y_test.values, y_val_pred))
 
         tf.summary.scalar("MAE validation", val_acc)
-        print(f"MAE on validation set: {val_acc:.4g} eV")
+        print(f"MAE on validation set: {val_acc:.4} eV")
 
 
 # %%

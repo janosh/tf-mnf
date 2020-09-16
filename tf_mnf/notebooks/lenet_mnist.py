@@ -151,7 +151,7 @@ def train_mnf_lenet(log_every=50):
             if step % log_every == 0:
                 tf.summary.experimental.set_step(adam.iterations)
                 tf.summary.scalar("accuracy/training", train_acc)
-                pbar.set_postfix(loss=f"{loss:.4g}", train_acc=f"{train_acc:.4g}")
+                pbar.set_postfix(loss=f"{loss:.4}", train_acc=f"{train_acc:.4}")
 
 
 log_writer = tf.summary.create_file_writer(

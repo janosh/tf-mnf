@@ -4,7 +4,7 @@ import tensorflow as tf
 from ..flows import IAF, NormalizingFlow
 
 
-class Conv2DMNF(tf.keras.layers.Layer):
+class MNFConv2D(tf.keras.layers.Layer):
     """Bayesian 2D convolutional layer with weight posterior modeled by diagonal
     covariance Gaussian. To increase expressiveness and allow for multimodality and
     non-zero covariance between weights, the Gaussian means depend on an auxiliary
