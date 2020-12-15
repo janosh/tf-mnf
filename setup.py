@@ -1,6 +1,5 @@
-# Install this package via `pip install .`. Don't use the `-e` option
-# (development mode) as that will install to the wrong place. See
-# https://github.com/conda/conda/issues/5861.
+# Install this package via `pip install -e .`.
+# Remember to activate correct target env first.
 
 from setuptools import find_namespace_packages, setup
 

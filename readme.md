@@ -1,5 +1,10 @@
 # TF-MNF
 
+[![pre-commit.ci status](https://results.pre-commit.ci/badge/github/janosh/tf-mnf/master.svg)](https://results.pre-commit.ci/latest/github/janosh/tf-mnf/master)
+[![License](https://img.shields.io/github/license/janosh/tf-mnf?label=License)](/license)
+![GitHub Repo Size](https://img.shields.io/github/repo-size/janosh/tf-mnf?label=Repo+Size)
+![GitHub last commit](https://img.shields.io/github/last-commit/janosh/tf-mnf?label=Last+Commit)
+
 <img src="assets/normalizing-flow.svg" alt="Normalizing Flow" align="right" height="150">
 
 TensorFlow 2.0 implementation of Multiplicative Normalizing Flows (MNF). MNF is a Bayesian neural network variant introduced in [[1]](#tf-mnf) with auxiliary random variables and a factorial Gaussian posterior with means `mu_i` conditioned on scaling factors `z_i` modelled by normalizing flows.

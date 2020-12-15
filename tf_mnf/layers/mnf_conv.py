@@ -21,8 +21,6 @@ class MNFConv2D(tf.keras.layers.Layer):
         kernel_size,  # int or list of two ints for kernel height and width.
         # Stride of the sliding kernel for each of the 4 input dimension
         # (batch_size, vertical, horizontal, stack_size).
-        strides=1,  # int or list of ints of length 1, 2 or 4.
-        padding="SAME",  # "SAME" or "VALID"
         n_flows_q=2,
         n_flows_r=2,
         learn_p=False,
@@ -39,8 +37,6 @@ class MNFConv2D(tf.keras.layers.Layer):
         self.kernel_size = (
             [kernel_size, kernel_size] if type(kernel_size) == int else kernel_size
         )
-        self.padding = padding
-        self.strides = strides
         self.max_std = max_std
         self.std_init = std_init
         self.flow_h_sizes = flow_h_sizes
@@ -82,7 +78,8 @@ class MNFConv2D(tf.keras.layers.Layer):
             trainable=self.learn_p,
         )
         self.prior_var_r_p_bias = tf.Variable(
-            glorot([1]) * std_init + np.log(self.prior_var_b), trainable=self.learn_p,
+            glorot([1]) * std_init + np.log(self.prior_var_b),
+            trainable=self.learn_p,
         )
 
         r_flows = [
@@ -110,18 +107,6 @@ class MNFConv2D(tf.keras.layers.Layer):
             z_samples = z_samples[-1]
 
         return z_samples, log_dets
-
-    def get_mean_var(self, x):
-        std_w = tf.clip_by_value(tf.exp(self.log_std_W), 0, self.max_std)
-        var_w = tf.square(std_w)
-        var_b = tf.clip_by_value(tf.exp(self.log_var_b), 0, self.max_std ** 2)
-
-        conv_args = {"strides": self.strides, "padding": self.padding}
-
-        # Perform cross-correlation.
-        mean_W_out = tf.nn.conv2d(input=x, filters=self.mean_W, **conv_args)
-        var_w_out = tf.nn.conv2d(input=tf.square(x), filters=var_w, **conv_args)
-        return mean_W_out + self.mean_b, var_w_out + var_b
 
     def kl_div(self):
         z_sample, log_det_q = self.sample_z(1)
@@ -191,7 +176,14 @@ class MNFConv2D(tf.keras.layers.Layer):
 
     def call(self, x):
         z_samples, _ = self.sample_z(tf.shape(x)[0])
-        mean, var = self.get_mean_var(x)
+
+        std_w = tf.clip_by_value(tf.exp(self.log_std_W), 0, self.max_std)
+        var_w = tf.square(std_w)
+        var_b = tf.clip_by_value(tf.exp(self.log_var_b), 0, self.max_std ** 2)
+
+        # Perform cross-correlation.
+        mean = tf.nn.conv2d(input=x, filters=self.mean_W) + self.mean_b
+        var = tf.nn.conv2d(input=tf.square(x), filters=var_w) + var_b
 
         mu_out = mean * z_samples[:, None, None, :]  # insert singleton dims
         epsilon = tf.random.normal(tf.shape(mu_out))

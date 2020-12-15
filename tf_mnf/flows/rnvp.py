@@ -8,6 +8,9 @@ class RNVP(tf.Module):
 
     From "Density estimation using Real NVP", Dinh et al. (May 2016)
     https://arxiv.org/abs/1605.08803
+
+    This implementation uses the numerically stable updates introduced by IAF:
+    https://arxiv.org/abs/1606.04934
     """
 
     def __init__(self, dim, h_sizes=[30], activation="tanh", **kwargs):

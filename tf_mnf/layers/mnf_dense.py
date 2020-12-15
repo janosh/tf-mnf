@@ -68,7 +68,7 @@ class MNFDense(tf.keras.layers.Layer):
             trainable=self.learn_p,
         )
         self.prior_var_r_p_bias = tf.Variable(
-            glorot([1]) * std_init + np.log(self.prior_var_b), trainable=self.learn_p,
+            glorot([1]) * std_init + np.log(self.prior_var_b), trainable=self.learn_p
         )
 
         r_flows = [

@@ -117,7 +117,7 @@ def train_step(features, bandgaps):
 def train():
     steps = len(y_train) // flags.batch_size  # steps per epoch
     for epoch in range(flags.epochs):
-        for _ in tqdm(range(steps), desc=f"epoch {epoch + 1}/{flags.epochs}",):
+        for _ in tqdm(range(steps), desc=f"epoch {epoch + 1}/{flags.epochs}"):
             batch = X_train.sample(flags.batch_size)
             tf.summary.experimental.set_step(adam.iterations)
             mae = train_step(batch.values, y_train.loc[batch.index].values)
