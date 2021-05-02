@@ -11,6 +11,7 @@ from tqdm import tqdm
 from tf_mnf import ROOT
 from tf_mnf.evaluate import np2torch2np, rot_img
 
+
 # %%
 plt.rcParams["figure.figsize"] = [12, 8]
 
@@ -24,6 +25,7 @@ train_loader, test_loader = [
     DataLoader(dataset=x, batch_size=32, shuffle=True, drop_last=True)
     for x in [train_set, test_set]
 ]
+
 
 # %%
 for idx in range(5):

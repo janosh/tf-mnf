@@ -9,6 +9,7 @@ from tqdm import tqdm
 from tf_mnf import models  # ,ROOT
 from tf_mnf.evaluate import rot_img
 
+
 # %%
 plt.rcParams["figure.figsize"] = [12, 8]
 
@@ -67,6 +68,7 @@ def loss_fn(labels, preds):
 
 # %%
 mnf_lenet.compile(loss=loss_fn, optimizer=adam, metrics=["accuracy"])
+
 
 # %%
 nf_hist = mnf_lenet.fit(

@@ -9,10 +9,11 @@ from tqdm import tqdm
 
 from tf_mnf import ROOT, models
 
+
 # %%
 parser = argparse.ArgumentParser(allow_abbrev=False)
 # TensorBoard log directory
-parser.add_argument("-logdir", type=str, default=ROOT + "/logs/bandgap/")
+parser.add_argument("-logdir", default=ROOT + "/logs/bandgap/")
 parser.add_argument("-epochs", type=int, default=5)
 parser.add_argument("-batch_size", type=int, default=64)
 parser.add_argument("-n_flows_q", type=int, default=2)
