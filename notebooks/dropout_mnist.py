@@ -16,15 +16,15 @@ from tf_mnf.evaluate import np2torch2np, rot_img
 plt.rcParams["figure.figsize"] = [12, 8]
 
 # tv.transforms.Normalize() seems to be unnecessary.
-train_set, test_set = [
+train_set, test_set = (
     MNIST(root=ROOT + "/data", transform=ToTensor(), download=True, train=x)
     for x in [True, False]
-]
+)
 
-train_loader, test_loader = [
+train_loader, test_loader = (
     DataLoader(dataset=x, batch_size=32, shuffle=True, drop_last=True)
     for x in [train_set, test_set]
-]
+)
 
 
 # %%

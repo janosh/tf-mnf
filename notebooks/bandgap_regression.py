@@ -37,7 +37,7 @@ bandgaps = features.pop("Eg (eV)")
 
 X_train = features.sample(frac=0.8, random_state=flags.seed)
 X_test = features.drop(X_train.index)
-y_train, y_test = [bandgaps[X.index] for X in [X_train, X_test]]
+y_train, y_test = (bandgaps[X.index] for X in [X_train, X_test])
 
 tf.random.set_seed(flags.seed)
 

@@ -25,4 +25,4 @@ class MNFLeNet(tf.keras.Sequential):
         """Compute current KL divergence of the whole model.
         Can be used as a regularization term during training.
         """
-        return sum([lyr.kl_div() for lyr in self.layers if hasattr(lyr, "kl_div")])
+        return sum(lyr.kl_div() for lyr in self.layers if hasattr(lyr, "kl_div"))

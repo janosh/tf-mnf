@@ -22,13 +22,13 @@ batch_size = 64
 (X_train, y_train), (X_test, y_test) = tf.keras.datasets.mnist.load_data()
 
 # Constrain pixel values to the unit interval [0, 1].
-X_train, X_test = [X.astype("float32") / 255 for X in [X_train, X_test]]
+X_train, X_test = (X.astype("float32") / 255 for X in [X_train, X_test])
 
 # Add a channels (aka stacks) dimension.
 X_train, X_test = X_train[..., None], X_test[..., None]
 
 # One-hot encode the labels.
-y_train, y_test = [tf.keras.utils.to_categorical(y, 10) for y in [y_train, y_test]]
+y_train, y_test = (tf.keras.utils.to_categorical(y, 10) for y in [y_train, y_test])
 
 # ensure reproducible results
 tf.random.set_seed(0)
