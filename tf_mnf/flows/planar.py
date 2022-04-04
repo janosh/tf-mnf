@@ -19,7 +19,7 @@ class PlanarFlow(tf.Module):
         w = self.dense.kernel
         uw = tf.reduce_sum(self.u * w)
         suw = -1 + tf.math.softplus(uw)  # = -1 + log(1 + exp(uw))
-        u_hat = self.u + (suw - uw) * w / tf.reduce_sum(w ** 2)
+        u_hat = self.u + (suw - uw) * w / tf.reduce_sum(w**2)
 
         zwb = self.dense(z)
         shift = tf.matmul(tf.tanh(zwb), tf.transpose(u_hat))

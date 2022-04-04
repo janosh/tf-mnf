@@ -179,7 +179,7 @@ class MNFConv2D(tf.keras.layers.Layer):
 
         std_w = tf.clip_by_value(tf.exp(self.log_std_W), 0, self.max_std)
         var_w = tf.square(std_w)
-        var_b = tf.clip_by_value(tf.exp(self.log_var_b), 0, self.max_std ** 2)
+        var_b = tf.clip_by_value(tf.exp(self.log_var_b), 0, self.max_std**2)
 
         # Perform cross-correlation.
         mean = tf.nn.conv2d(input=x, filters=self.mean_W) + self.mean_b
