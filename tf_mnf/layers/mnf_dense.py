@@ -157,7 +157,7 @@ class MNFDense(tf.keras.layers.Layer):
         mu_out = tf.matmul(x * z_samples, self.mean_W) + self.mean_b
 
         std_W = tf.clip_by_value(tf.exp(self.log_std_W), 0, self.max_std)
-        var_b = tf.clip_by_value(tf.exp(self.log_var_b), 0, self.max_std ** 2)
+        var_b = tf.clip_by_value(tf.exp(self.log_var_b), 0, self.max_std**2)
         var_W = tf.square(std_W)
         V_h = tf.matmul(tf.square(x), var_W) + var_b
         epsilon = tf.random.normal(tf.shape(mu_out))
