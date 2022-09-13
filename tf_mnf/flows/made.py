@@ -38,7 +38,7 @@ class MADE(tf.keras.layers.Layer):
     Germain et al. (June 2015) https://arxiv.org/abs/1502.03509
     """
 
-    def __init__(self, n_outputs=1, h_sizes=[], num_masks=1, shuffle=False, **kwargs):
+    def __init__(self, n_outputs=1, h_sizes=(), num_masks=1, shuffle=False, **kwargs):
         """
         n_in (int): number of inputs
         h_sizes (list[int]): number of units in hidden layers
@@ -64,7 +64,7 @@ class MADE(tf.keras.layers.Layer):
         self.n_in = input_shape[-1]
         # Simple feed-forward net built with masked layers to make it autoregressive.
         layers = []
-        for size in self.h_sizes + [self.n_in * self.n_outputs]:
+        for size in [*self.h_sizes, self.n_in * self.n_outputs]:
             layers.extend([MaskedDense(size), tf.keras.layers.ReLU()])
         self.net = tf.keras.Sequential(layers[:-1])  # drop last ReLU
 

@@ -1,7 +1,7 @@
 import tensorflow as tf
 from tensorflow.keras.layers import Flatten, MaxPool2D, ReLU, Softmax
 
-from ..layers import MNFConv2D, MNFDense
+from tf_mnf.layers import MNFConv2D, MNFDense
 
 
 class MNFLeNet(tf.keras.Sequential):
