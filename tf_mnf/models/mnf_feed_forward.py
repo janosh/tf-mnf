@@ -1,7 +1,7 @@
 import tensorflow as tf
 from tensorflow.keras.layers import BatchNormalization, ReLU
 
-from ..layers import MNFDense
+from tf_mnf.layers import MNFDense
 
 
 class MNFFeedForward(tf.keras.Sequential):

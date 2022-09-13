@@ -3,7 +3,7 @@
 import tensorflow as tf
 import tensorflow_probability as tfp
 
-from .made import MADE
+from tf_mnf.flows.made import MADE
 
 
 class MAF(tf.Module):
@@ -14,7 +14,7 @@ class MAF(tf.Module):
     (Jun 2018) https://arxiv.org/abs/1705.07057
     """
 
-    def __init__(self, parity, net=None, h_sizes=[30]):
+    def __init__(self, parity, net=None, h_sizes=(30,)):
         super().__init__()
         self.parity = parity
         # Uses a 2-layer auto-regressive MLP with 2 outputs by default.
@@ -57,7 +57,7 @@ class IAF(MAF):
 class TFMAF(tfp.bijectors.MaskedAutoregressiveFlow):
     """Wrapper around TFP's MaskedAutoregressiveFlow."""
 
-    def __init__(self, made=None, h_sizes=[30, 30], **kwargs):
+    def __init__(self, made=None, h_sizes=(30, 30), **kwargs):
         """
         made (Keras model): Masked autoencoder to use as shift and log scale function.
         h_sizes (list of ints): size of hidden layers in the MADE network. Ignored if

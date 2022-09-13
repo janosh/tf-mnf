@@ -80,7 +80,7 @@ def train(model, loader, epochs=1, print_every=50, **kwargs):
     optimizer = torch.optim.Adam(model.parameters(), **kwargs)
     for epoch in range(epochs):
         # print("epoch\tbatch\t\ttraining loss")
-        for batch, (samples, targets) in tqdm(
+        for _batch, (samples, targets) in tqdm(
             enumerate(loader), desc=f"Epoch {epoch + 1}/{epochs}"
         ):
             optimizer.zero_grad()

@@ -1,7 +1,7 @@
 import numpy as np
 import tensorflow as tf
 
-from ..flows import IAF, NormalizingFlow
+from tf_mnf.flows import IAF, NormalizingFlow
 
 
 class MNFConv2D(tf.keras.layers.Layer):
@@ -27,7 +27,7 @@ class MNFConv2D(tf.keras.layers.Layer):
         use_z=True,
         prior_var_w=1,
         prior_var_b=1,
-        flow_h_sizes=[50],
+        flow_h_sizes=(50,),
         max_std=1,
         std_init=1,
         **kwargs,

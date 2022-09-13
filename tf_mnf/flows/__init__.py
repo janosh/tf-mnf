@@ -1,8 +1,11 @@
 import tensorflow as tf
 
-from .maf import IAF, MAF, TFIAF, TFMAF
-from .planar import PlanarFlow
-from .rnvp import RNVP
+from tf_mnf.flows.maf import IAF as IAF
+from tf_mnf.flows.maf import MAF as MAF
+from tf_mnf.flows.maf import TFIAF as TFIAF
+from tf_mnf.flows.maf import TFMAF as TFMAF
+from tf_mnf.flows.planar import PlanarFlow as PlanarFlow
+from tf_mnf.flows.rnvp import RNVP as RNVP
 
 
 class NormalizingFlow(tf.Module):

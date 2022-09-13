@@ -13,7 +13,7 @@ class RNVP(tf.Module):
     https://arxiv.org/abs/1606.04934
     """
 
-    def __init__(self, dim, h_sizes=[30], activation="tanh", **kwargs):
+    def __init__(self, dim, h_sizes=(30,), activation="tanh", **kwargs):
         super().__init__(**kwargs)
         layers = [tf.keras.layers.Dense(hs, activation) for hs in h_sizes]
         self.net = tf.keras.Sequential(layers)

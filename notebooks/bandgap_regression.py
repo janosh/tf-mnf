@@ -45,9 +45,10 @@ tf.random.set_seed(flags.seed)
 # %%
 layer_args = ["use_z", "n_flows_q", "n_flows_r", "learn_p"]
 layer_args += ["max_std", "flow_h_sizes", "std_init"]
-layer_args = {key: getattr(flags, key) for key in layer_args}
 
-model = models.MNFFeedForward(layer_sizes=[100, 50, 10, 1], **layer_args)
+model = models.MNFFeedForward(
+    layer_sizes=[100, 50, 10, 1], **{key: getattr(flags, key) for key in layer_args}
+)
 
 adam = tf.optimizers.Adam(flags.learning_rate)
 
@@ -77,11 +78,9 @@ hist = model.fit(X_train.values, y_train.values, **fit_args)
 
 # %%
 def predict(X=X_test.values, n_samples=flags.test_samples):
-    preds = []
-    for i in tqdm(range(n_samples), desc="Sampling"):
-        # Set training=False for layers like BatchNormalization or Dropout that behave
-        # differently during inference.
-        preds.append(model(X, training=False))
+    # using training=False for layers like BatchNormalization or Dropout that behave
+    # differently during inference.
+    preds = [model(X, training=False) for _ in tqdm(range(n_samples), desc="Sampling")]
     return tf.squeeze(preds)
 
 
