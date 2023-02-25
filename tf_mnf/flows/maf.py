@@ -58,10 +58,13 @@ class TFMAF(tfp.bijectors.MaskedAutoregressiveFlow):
     """Wrapper around TFP's MaskedAutoregressiveFlow."""
 
     def __init__(self, made=None, h_sizes=(30, 30), **kwargs):
-        """
-        made (Keras model): Masked autoencoder to use as shift and log scale function.
-        h_sizes (list of ints): size of hidden layers in the MADE network. Ignored if
-            made is not None.
+        """Create a Masked Autoregressive Flow (MAF) bijector.
+
+        Args:
+            made (keras.Model): Masked autoencoder to use as shift and log scale func.
+            h_sizes (list[int]): size of hidden layers in the MADE network. Ignored if
+                made is not None.
+            **kwargs: Passed to tfp.bijectors.MaskedAutoregressiveFlow.
         """
         if not made:  # Define a default masked autoencoder for density estimation.
             made = tfp.bijectors.AutoregressiveNetwork(params=2, hidden_units=h_sizes)
