@@ -1,0 +1,15 @@
+[build-system]
+requires = ["setuptools>=61.2"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "TF-MNF"
+version = "0.1.0"
+authors = [{ name = "Janosh Riebesell", email = "janosh.riebesell@gmail.com" }]
+readme = "readme.md"
+description = "TensorFlow 2.0 implementation of Multiplicative Normalizing Flows"
+urls = { Homepage = "https://github.com/janosh/tf-mnf" }
+license = { file = "license" }
+
+[tool.mypy]
+no_implicit_optional = false
