@@ -35,7 +35,7 @@ class MNFConv2D(tf.keras.layers.Layer):
         super().__init__(**kwargs)
         self.n_filters = n_filters
         self.kernel_size = (
-            [kernel_size, kernel_size] if type(kernel_size) == int else kernel_size
+            [kernel_size, kernel_size] if isinstance(kernel_size, int) else kernel_size
         )
         self.max_std = max_std
         self.std_init = std_init
