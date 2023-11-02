@@ -51,8 +51,7 @@ class LeNet5(nn.Module):
         x = x.view(-1, 16 * 4 * 4)
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
-        x = self.fc3(x)
-        return x
+        return self.fc3(x)
 
 
 class LeNet5Dropout(LeNet5):
@@ -70,8 +69,7 @@ class LeNet5Dropout(LeNet5):
         x = x.view(x.size(0), -1)
         x = relu_drop(self.fc1(x))
         x = relu_drop(self.fc2(x))
-        x = self.fc3(x)
-        return x
+        return self.fc3(x)
 
 
 # %%

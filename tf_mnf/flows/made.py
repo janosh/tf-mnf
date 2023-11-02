@@ -27,7 +27,7 @@ class MaskedDense(tf.keras.layers.Dense):
 
 
 class MADE(tf.keras.layers.Layer):
-    """Masked Autoencoder for Distribution Estimation masks the autoencoder’s
+    """Masked Autoencoder for Distribution Estimation masks the autoencoder's
     parameters to respect autoregressive constraints: each output is reconstructed
     only from previous inputs in a given ordering. Constrained this way, the
     autoencoder outputs can be interpreted as a set of conditional probabilities and

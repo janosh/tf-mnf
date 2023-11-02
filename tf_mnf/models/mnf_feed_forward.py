@@ -9,7 +9,7 @@ class MNFFeedForward(tf.keras.Sequential):
         layers = []
         for dim in layer_sizes[:-1]:
             layers.extend([MNFDense(dim, **kwargs), activation(), BatchNormalization()])
-        super().__init__(layers + [MNFDense(layer_sizes[-1], **kwargs)])
+        super().__init__([*layers, MNFDense(layer_sizes[-1], **kwargs)])
 
     def kl_div(self):
         """Compute current KL divergence of the whole model. Should be included

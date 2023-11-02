@@ -77,7 +77,7 @@ hist = model.fit(X_train.values, y_train.values, **fit_args)
 
 
 # %%
-def predict(X=X_test.values, n_samples=flags.test_samples):
+def predict(X, n_samples=flags.test_samples):
     # using training=False for layers like BatchNormalization or Dropout that behave
     # differently during inference.
     preds = [model(X, training=False) for _ in tqdm(range(n_samples), desc="Sampling")]
@@ -85,9 +85,9 @@ def predict(X=X_test.values, n_samples=flags.test_samples):
 
 
 # %%
-preds = predict().numpy()
+preds = predict(X_test.to_numpy()).numpy()
 preds = pd.DataFrame(preds, columns=composition.loc[y_test.index]).T.reset_index()
-preds["Eg (eV)"] = y_test.values
+preds["Eg (eV)"] = y_test.to_numpy()
 
 
 # %%
@@ -110,8 +110,7 @@ def train_step(features, bandgaps):
     grads = tape.gradient(loss, model.trainable_variables)
     adam.apply_gradients(zip(grads, model.trainable_variables))
 
-    mae = tf.reduce_mean(tf.metrics.mae(bandgaps, preds))
-    return mae
+    return tf.reduce_mean(tf.metrics.mae(bandgaps, preds))
 
 
 def train():
