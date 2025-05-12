@@ -1,4 +1,7 @@
+from __future__ import annotations
+
 from functools import wraps
+from typing import TYPE_CHECKING, Callable
 
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -7,7 +10,16 @@ import torch
 from scipy.ndimage import rotate
 
 
-def rot_img(pred_fn, img, plot_type="violin", axes=(1, 2)):
+if TYPE_CHECKING:
+    import numpy as np
+
+
+def rot_img(
+    pred_fn: Callable,
+    img: np.ndarray,
+    plot_type: str = "violin",
+    axes: tuple[int, int] = (1, 2),
+) -> None:
     """Rotate an image 180° in steps of 20°. For the example of an MNIST 9
     digit, this starts out on the training manifold, leaves it when the 9
     lies on its side and reenters it once we're at 180° and the 9 looks like
@@ -33,19 +45,18 @@ def rot_img(pred_fn, img, plot_type="violin", axes=(1, 2)):
             sns.barplot(data=df, x="digit", y="softmax", ax=ax1)
 
         ax1.set(ylim=[None, 1.1], title=f"mean max: {preds.mean(0).argmax()}")
-        ax2 = ax1.inset_axes([0, 0.5, 0.4, 0.4])
+        ax2 = ax1.inset_axes((0, 0.5, 0.4, 0.4))
         ax2.axis("off")
         ax2.imshow(img_rot.squeeze(), cmap="gray")
 
     plt.tight_layout()  # needed to keep titles clear of above subplots
 
 
-def np2torch2np(func):
+def np2torch2np(func: Callable) -> Callable:
     """Convert numpy array to pytorch tensor, execute function and revert to numpy."""
 
     @wraps(func)
-    def wrapped(x):
-        x = torch.from_numpy(x)
-        return func(x).detach().numpy()
+    def wrapped(x: np.ndarray) -> np.ndarray:
+        return func(torch.from_numpy(x)).detach().numpy()
 
     return wrapped
