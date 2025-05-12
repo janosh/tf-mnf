@@ -47,14 +47,14 @@ layer_args = ["use_z", "n_flows_q", "n_flows_r", "learn_p"]
 layer_args += ["max_std", "flow_h_sizes", "std_init"]
 
 model = models.MNFFeedForward(
-    layer_sizes=[100, 50, 10, 1], **{key: getattr(flags, key) for key in layer_args}
+    layer_sizes=(100, 50, 10, 1), **{key: getattr(flags, key) for key in layer_args}
 )
 
 adam = tf.optimizers.Adam(flags.learning_rate)
 
 
 # %%
-def loss_fn(y_true, y_pred):
+def loss_fn(y_true: tf.Tensor, y_pred: tf.Tensor) -> tf.Tensor:
     # Assuming Gaussian L2 loss equivalent to maximum likelihood estimation.
     mse = tf.reduce_mean(tf.losses.mse(y_true, y_pred))
     tf.summary.scalar("MSE", mse)
@@ -77,7 +77,7 @@ hist = model.fit(X_train.values, y_train.values, **fit_args)
 
 
 # %%
-def predict(X, n_samples=flags.test_samples):
+def predict(X: tf.Tensor, n_samples: int = flags.test_samples) -> tf.Tensor:
     # using training=False for layers like BatchNormalization or Dropout that behave
     # differently during inference.
     preds = [model(X, training=False) for _ in tqdm(range(n_samples), desc="Sampling")]
@@ -102,7 +102,7 @@ sns.pointplot(x="Eg (eV)", y="y_pred", data=melted)
 
 # %%
 @tf.function
-def train_step(features, bandgaps):
+def train_step(features: tf.Tensor, bandgaps: tf.Tensor) -> tf.Tensor:
     with tf.GradientTape() as tape:
         preds = model(features)
         loss = loss_fn(bandgaps, preds)
@@ -113,7 +113,7 @@ def train_step(features, bandgaps):
     return tf.reduce_mean(tf.metrics.mae(bandgaps, preds))
 
 
-def train():
+def train() -> None:
     steps = len(y_train) // flags.batch_size  # steps per epoch
     for epoch in range(flags.epochs):
         for _ in tqdm(range(steps), desc=f"epoch {epoch + 1}/{flags.epochs}"):

@@ -1,3 +1,7 @@
+from __future__ import annotations
+
+from typing import Any
+
 import numpy as np
 import tensorflow as tf
 
@@ -17,21 +21,22 @@ class MNFConv2D(tf.keras.layers.Layer):
 
     def __init__(
         self,
-        n_filters,  # int: Dimensionality of the output space.
-        kernel_size,  # int or list of two ints for kernel height and width.
+        n_filters: int,  # int: Dimensionality of the output space.
+        kernel_size: int
+        | tuple[int, int],  # int or list of two ints for kernel height and width.
         # Stride of the sliding kernel for each of the 4 input dimension
         # (batch_size, vertical, horizontal, stack_size).
-        n_flows_q=2,
-        n_flows_r=2,
-        learn_p=False,
-        use_z=True,
-        prior_var_w=1,
-        prior_var_b=1,
-        flow_h_sizes=(50,),
-        max_std=1,
-        std_init=1,
-        **kwargs,
-    ):
+        n_flows_q: int = 2,
+        n_flows_r: int = 2,
+        learn_p: bool = False,
+        use_z: bool = True,
+        prior_var_w: float = 1,
+        prior_var_b: float = 1,
+        flow_h_sizes: tuple[int, ...] = (50,),
+        max_std: float = 1,
+        std_init: float = 1,
+        **kwargs: Any,
+    ) -> None:
         super().__init__(**kwargs)
         self.n_filters = n_filters
         self.kernel_size = (
@@ -47,7 +52,7 @@ class MNFConv2D(tf.keras.layers.Layer):
         self.n_flows_r = n_flows_r
         self.use_z = use_z
 
-    def build(self, input_shape):
+    def build(self, input_shape: tf.TensorShape) -> None:
         stack_size = input_shape[-1]  # = 1 for black & white images like MNIST
         std_init, mean_init = self.std_init, -9
         n_rows, n_cols = self.kernel_size
@@ -92,7 +97,7 @@ class MNFConv2D(tf.keras.layers.Layer):
         ]
         self.flow_q = NormalizingFlow(q_flows)
 
-    def sample_z(self, batch_size):
+    def sample_z(self, batch_size: int) -> tuple[tf.Tensor, tf.Tensor]:
         log_dets = tf.zeros(batch_size)
         if not self.use_z:
             return tf.ones([batch_size, self.n_filters]), log_dets
@@ -174,7 +179,7 @@ class MNFConv2D(tf.keras.layers.Layer):
 
         return kl_div_w + kl_div_b - log_r + log_q
 
-    def call(self, x):
+    def call(self, x: tf.Tensor) -> tf.Tensor:
         z_samples, _ = self.sample_z(tf.shape(x)[0])
 
         std_w = tf.clip_by_value(tf.exp(self.log_std_W), 0, self.max_std)

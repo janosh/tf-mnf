@@ -1,4 +1,6 @@
 # %%
+from __future__ import annotations
+
 from datetime import datetime
 
 import matplotlib.pyplot as plt
@@ -48,7 +50,7 @@ adam = tf.optimizers.Adam(1e-3)
 # %%
 # We minimize the negative log-likelihood, i.e. maximize the log-likelihood of
 # observed data (X_train, y_train) under the model
-def loss_fn(labels, preds):
+def loss_fn(labels: tf.Tensor, preds: tf.Tensor) -> tf.Tensor:
     # entropic_loss = multiclass cross entropy = negative log-likelihood.
     cross_entropy = tf.losses.categorical_crossentropy(labels, preds)
     entropic_loss = tf.reduce_mean(cross_entropy)
@@ -79,7 +81,7 @@ nf_hist = mnf_lenet.fit(
 # %%
 img9 = X_test[12]
 test_samples = 500
-rot_img(lambda x: mnf_lenet(x.repeat(test_samples, axis=0)).numpy(), img9, axes=[1, 0])
+rot_img(lambda x: mnf_lenet(x.repeat(test_samples, axis=0)).numpy(), img9, axes=(1, 0))
 # plt.savefig(ROOT + "/assets/rot-9-mnf-lenet.pdf")
 
 
@@ -93,7 +95,7 @@ lenet_hist = lenet.fit(X_train, y_train, epochs=epochs)
 
 
 # %%
-rot_img(lambda x: lenet(x).numpy(), img9, plot_type="bar", axes=[1, 0])
+rot_img(lambda x: lenet(x).numpy(), img9, plot_type="bar", axes=(1, 0))
 # plt.savefig(ROOT + "/assets/rot-9-lenet.pdf")
 
 # Below is code for low-level training with tf.GradientTape(). Slower and more verbose
@@ -102,7 +104,7 @@ rot_img(lambda x: lenet(x).numpy(), img9, plot_type="bar", axes=[1, 0])
 
 # %%
 @tf.function
-def train_step(images, labels):
+def train_step(images: tf.Tensor, labels: tf.Tensor) -> tuple[tf.Tensor, tf.Tensor]:
     with tf.GradientTape() as tape:
         # We could draw multiple posterior samples here to get unbiased Monte Carlo
         # estimate for the NLL which would decrease training variance but slow us down.
@@ -116,7 +118,7 @@ def train_step(images, labels):
     return loss, train_acc
 
 
-def train_mnf_lenet(log_every=50):
+def train_mnf_lenet(log_every: int = 50) -> None:
     for epoch in range(epochs):
         idx = np.arange(len(y_train))
         np.random.shuffle(idx)

@@ -1,3 +1,7 @@
+from __future__ import annotations
+
+from typing import Any
+
 import numpy as np
 import tensorflow as tf
 
@@ -17,17 +21,17 @@ class MNFDense(tf.keras.layers.Layer):
 
     def __init__(
         self,
-        n_out,
-        n_flows_q=2,
-        n_flows_r=2,
-        learn_p=False,
-        use_z=True,
-        prior_var_w=1,
-        prior_var_b=1,
-        flow_h_sizes=(50,),
-        max_std=1,
-        std_init=1,
-        **kwargs,
+        n_out: int,
+        n_flows_q: int = 2,
+        n_flows_r: int = 2,
+        learn_p: bool = False,
+        use_z: bool = True,
+        prior_var_w: float = 1,
+        prior_var_b: float = 1,
+        flow_h_sizes: tuple[int, ...] = (50,),
+        max_std: float = 1,
+        std_init: float = 1,
+        **kwargs: Any,
     ):
         self.n_out = n_out
         self.learn_p = learn_p
@@ -41,7 +45,7 @@ class MNFDense(tf.keras.layers.Layer):
         self.flow_h_sizes = flow_h_sizes
         super().__init__(**kwargs)
 
-    def build(self, input_shape):
+    def build(self, input_shape: tf.TensorShape) -> None:
         n_in = self.n_in = input_shape[-1]
         std_init, mean_init = self.std_init, -9
 
@@ -81,7 +85,7 @@ class MNFDense(tf.keras.layers.Layer):
         ]
         self.flow_q = NormalizingFlow(q_flows)
 
-    def sample_z(self, batch_size):
+    def sample_z(self, batch_size: int) -> tuple[tf.Tensor, tf.Tensor]:
         log_dets = tf.zeros(batch_size)
         if not self.use_z:
             return tf.ones([batch_size, self.n_in]), log_dets
@@ -97,7 +101,7 @@ class MNFDense(tf.keras.layers.Layer):
 
         return z_samples, log_dets
 
-    def kl_div(self):
+    def kl_div(self) -> tf.Tensor:
         z_sample, log_det_q = self.sample_z(1)
 
         Mtilde = tf.transpose(z_sample) * self.mean_W
@@ -152,7 +156,7 @@ class MNFDense(tf.keras.layers.Layer):
 
         return kl_div_w + kl_div_b - log_r + log_q
 
-    def call(self, x):
+    def call(self, x: tf.Tensor) -> tf.Tensor:
         z_samples, _ = self.sample_z(tf.shape(x)[0])
         mu_out = tf.matmul(x * z_samples, self.mean_W) + self.mean_b
 

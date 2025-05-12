@@ -1,5 +1,9 @@
 """Adapted from https://github.com/karpathy/pytorch-normalizing-flows."""
 
+from __future__ import annotations
+
+from typing import Any
+
 import tensorflow as tf
 import tensorflow_probability as tfp
 
@@ -14,14 +18,19 @@ class MAF(tf.Module):
     (Jun 2018) https://arxiv.org/abs/1705.07057
     """
 
-    def __init__(self, parity, net=None, h_sizes=(30,)):
+    def __init__(
+        self,
+        parity: bool,
+        net: tf.Module | None = None,
+        h_sizes: tuple[int, ...] = (30,),
+    ) -> None:
         super().__init__()
         self.parity = parity
         # Uses a 2-layer auto-regressive MLP with 2 outputs by default.
         # Custom nets must also have 2 outputs, one for log scale s and one for shift t.
         self.net = net or MADE(n_outputs=2, h_sizes=h_sizes)
 
-    def forward(self, z):
+    def forward(self, z: tf.Tensor) -> tuple[tf.Tensor, tf.Tensor]:
         batch_size, dim = tf.shape(z)  # dim: the flow's dimensionality.
         x = tf.zeros_like(z)
         log_dets = tf.zeros(batch_size)
@@ -35,7 +44,7 @@ class MAF(tf.Module):
             log_dets += -s[:, i]
         return x, log_dets
 
-    def inverse(self, x):
+    def inverse(self, x: tf.Tensor) -> tuple[tf.Tensor, tf.Tensor]:
         # Since we can evaluate all of z in parallel, density estimation is fast.
         s, t = self.net(x)
         z = x * tf.exp(s) + t
@@ -49,15 +58,20 @@ class IAF(MAF):
     which offers fast sampling but slow density estimation.
     """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
-        self.forward, self.inverse = self.inverse, self.forward
+        self.forward, self.inverse = self.inverse, self.forward  # type: ignore[method-assign, assignment]
 
 
 class TFMAF(tfp.bijectors.MaskedAutoregressiveFlow):
     """Wrapper around TFP's MaskedAutoregressiveFlow."""
 
-    def __init__(self, made=None, h_sizes=(30, 30), **kwargs):
+    def __init__(
+        self,
+        made: tf.keras.Model | None = None,
+        h_sizes: tuple[int, ...] = (30, 30),
+        **kwargs: Any,
+    ) -> None:
         """Create a Masked Autoregressive Flow (MAF) bijector.
 
         Args:
@@ -70,17 +84,17 @@ class TFMAF(tfp.bijectors.MaskedAutoregressiveFlow):
             made = tfp.bijectors.AutoregressiveNetwork(params=2, hidden_units=h_sizes)
         super().__init__(shift_and_log_scale_fn=made, **kwargs)
 
-    def forward(self, x):
+    def forward(self, x: tf.Tensor) -> tuple[tf.Tensor, tf.Tensor]:
         # 2nd arg (event_ndims) to the Jacobian computation indicates the Number of
         # dimensions in the probabilistic events being transformed. Just 1 here
         # because every sample in x is assumed independent.
         return super().forward(x), super().forward_log_det_jacobian(x, 1)
 
-    def inverse(self, x):
+    def inverse(self, x: tf.Tensor) -> tuple[tf.Tensor, tf.Tensor]:
         return super().inverse(x), super().inverse_log_det_jacobian(x, 1)
 
 
 class TFIAF(TFMAF):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
-        self.forward, self.inverse = self.inverse, self.forward
+        self.forward, self.inverse = self.inverse, self.forward  # type: ignore[method-assign]

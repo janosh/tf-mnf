@@ -1,3 +1,7 @@
+from __future__ import annotations
+
+from typing import Any
+
 import tensorflow as tf
 
 
@@ -13,14 +17,20 @@ class RNVP(tf.Module):
     https://arxiv.org/abs/1606.04934
     """
 
-    def __init__(self, dim, h_sizes=(30,), activation="tanh", **kwargs):
+    def __init__(
+        self,
+        dim: int,
+        h_sizes: tuple[int, ...] = (30,),
+        activation: str = "tanh",
+        **kwargs: Any,
+    ) -> None:
         super().__init__(**kwargs)
         layers = [tf.keras.layers.Dense(hs, activation) for hs in h_sizes]
         self.net = tf.keras.Sequential(layers)
         self.t = tf.keras.layers.Dense(dim)
         self.s = tf.keras.layers.Dense(dim)
 
-    def forward(self, z):  # z -> x
+    def forward(self, z: tf.Tensor) -> tuple[tf.Tensor, tf.Tensor]:  # z -> x
         # Get random Bernoulli mask. This decides which channels will remain
         # unchanged and which will be transformed as functions of the unchanged.
         mask = tf.keras.backend.random_binomial(tf.shape(z), p=0.5)

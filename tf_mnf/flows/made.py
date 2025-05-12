@@ -3,6 +3,10 @@ constructed binary masks over weights ensure autoregressivity.
 Adapted from https://github.com/karpathy/pytorch-made.
 """
 
+from __future__ import annotations
+
+from typing import Any
+
 import numpy as np
 import tensorflow as tf
 
@@ -10,18 +14,18 @@ import tensorflow as tf
 class MaskedDense(tf.keras.layers.Dense):
     """A dense layer with a configurable mask on the weights."""
 
-    def __init__(self, n_out, **kwargs):
+    def __init__(self, n_out: int, **kwargs: Any) -> None:
         super().__init__(n_out, **kwargs)
 
-    def build(self, input_shape):
+    def build(self, input_shape: tf.TensorShape) -> None:
         super().build(input_shape)
         n_in = input_shape[1]
         self.mask = tf.ones([n_in, self.units])
 
-    def set_mask(self, mask):
+    def set_mask(self, mask: tf.Tensor) -> None:
         self.mask = tf.cast(tf.cast(mask, bool), float)
 
-    def call(self, x):
+    def call(self, x: tf.Tensor) -> tf.Tensor:
         w, b = self.weights
         return tf.matmul(x, self.mask * w) + b
 
@@ -37,7 +41,14 @@ class MADE(tf.keras.layers.Layer):
     Germain et al. (June 2015) https://arxiv.org/abs/1502.03509
     """
 
-    def __init__(self, n_outputs=1, h_sizes=(), num_masks=1, shuffle=False, **kwargs):
+    def __init__(
+        self,
+        n_outputs: int = 1,
+        h_sizes: tuple[int, ...] = (),
+        num_masks: int = 1,
+        shuffle: bool = False,
+        **kwargs: Any,
+    ) -> None:
         """Create a Masked Autoencoder for Distribution Estimation.
 
         Args:
@@ -63,7 +74,7 @@ class MADE(tf.keras.layers.Layer):
         self.num_masks = num_masks
         self.seed = 0  # For cycling through num_masks orderings.
 
-    def build(self, input_shape):
+    def build(self, input_shape: tf.TensorShape) -> None:
         self.n_in = input_shape[-1]
         # Simple feed-forward net built with masked layers to make it autoregressive.
         layers = []
@@ -71,15 +82,15 @@ class MADE(tf.keras.layers.Layer):
             layers.extend([MaskedDense(size), tf.keras.layers.ReLU()])
         self.net = tf.keras.Sequential(layers[:-1])  # drop last ReLU
 
-        self.m = {}
+        self.m: dict[int, np.ndarray] = {}
         self.set_masks()  # Build the initial self.m connectivity
         # Note: We could also precompute the masks and cache them, but this
         # could get memory expensive for large numbers of masks.
 
-    def call(self, x):
+    def call(self, x: tf.Tensor) -> list[tf.Tensor]:
         return tf.split(self.net(x), self.n_outputs, axis=-1)
 
-    def set_masks(self):
+    def set_masks(self) -> None:
         if self.m and self.num_masks == 1:
             return  # Only a single seed, skip for efficiency.
 

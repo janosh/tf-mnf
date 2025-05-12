@@ -63,3 +63,6 @@ ignore = [
 ]
 pydocstyle.convention = "google"
 isort.lines-after-imports = 2
+
+[tool.ty.rules]
+unresolved-import = "ignore"

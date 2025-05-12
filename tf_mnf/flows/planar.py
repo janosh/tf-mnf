@@ -1,3 +1,7 @@
+from __future__ import annotations
+
+from typing import Any
+
 import tensorflow as tf
 
 
@@ -9,13 +13,13 @@ class PlanarFlow(tf.Module):
     https://arxiv.org/abs/1505.05770
     """
 
-    def __init__(self, dim, **kwargs):
+    def __init__(self, dim: int, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         glorot = tf.keras.initializers.GlorotNormal()
         self.u = tf.Variable(glorot([dim, 1]))
         self.dense = tf.keras.layers.Dense(1)
 
-    def forward(self, z):  # z -> x
+    def forward(self, z: tf.Tensor) -> tuple[tf.Tensor, tf.Tensor]:  # z -> x
         w = self.dense.kernel
         uw = tf.reduce_sum(self.u * w)
         suw = -1 + tf.math.softplus(uw)  # = -1 + log(1 + exp(uw))

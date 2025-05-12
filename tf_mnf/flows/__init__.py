@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import tensorflow as tf
 
 from tf_mnf.flows.maf import IAF as IAF
@@ -13,11 +15,11 @@ class NormalizingFlow(tf.Module):
     is itself a normalizing flow.
     """
 
-    def __init__(self, flows):
+    def __init__(self, flows: list[tf.Module]) -> None:
         super().__init__()
         self.flows = flows
 
-    def forward(self, z):  # z -> x
+    def forward(self, z: tf.Tensor) -> tuple[list[tf.Tensor], tf.Tensor]:  # z -> x
         log_dets = tf.zeros(tf.shape(z)[0])
         xs = [z]  # ensure z is tensor rathen than array
         for flow in self.flows:
@@ -26,7 +28,7 @@ class NormalizingFlow(tf.Module):
             xs.append(z)
         return xs, log_dets
 
-    def inverse(self, x):  # x -> z
+    def inverse(self, x: tf.Tensor) -> tuple[list[tf.Tensor], tf.Tensor]:  # x -> z
         log_dets = tf.zeros(tf.shape(x)[0])
         zs = [x]
         for flow in reversed(self.flows):
@@ -39,16 +41,16 @@ class NormalizingFlow(tf.Module):
 class NormalizingFlowModel(NormalizingFlow):
     """A normalizing flow model is a (base distro, flow) pair."""
 
-    def __init__(self, base, flow):
+    def __init__(self, base: tf.Module, flow: list[tf.Module]) -> None:
         super().__init__(flow)
         # Distribution class that exposes a log_prob() and sample() method.
         self.base = base
 
-    def base_log_prob(self, x):
+    def base_log_prob(self, x: tf.Tensor) -> tf.Tensor:
         zs, _ = self.inverse(x)
         return tf.reduce_sum(self.base.log_prob(zs[-1]))
 
-    def sample(self, *num_samples):
+    def sample(self, *num_samples: int) -> list[tf.Tensor]:
         z = self.base.sample(num_samples)
         # Pass with_steps=True if you need both z and x.
         xs, _ = self.forward(z)

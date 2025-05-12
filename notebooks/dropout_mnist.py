@@ -1,4 +1,6 @@
 # %%
+from typing import Any
+
 import matplotlib.pyplot as plt
 import torch
 import torch.nn.functional as F
@@ -36,7 +38,7 @@ for idx in range(5):
 
 # %%
 class LeNet5(nn.Module):
-    def __init__(self, n_classes=10, **kwargs):
+    def __init__(self, n_classes: int = 10, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self.conv1 = nn.Conv2d(1, 6, 5)
         self.pool = nn.MaxPool2d(2, 2)
@@ -45,7 +47,7 @@ class LeNet5(nn.Module):
         self.fc2 = nn.Linear(120, 84)
         self.fc3 = nn.Linear(84, n_classes)
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self.pool(F.relu(self.conv1(x)))
         x = self.pool(F.relu(self.conv2(x)))
         x = x.view(-1, 16 * 4 * 4)
@@ -55,11 +57,11 @@ class LeNet5(nn.Module):
 
 
 class LeNet5Dropout(LeNet5):
-    def __init__(self, drop_rate=0.5, **kwargs):
+    def __init__(self, drop_rate: float = 0.5, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self.drop_rate = drop_rate
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         # unlike nn.Dropout, functional.dropout is always on (even at test time)
         relu_drop = lambda arg, rate=1: F.relu(F.dropout(arg, self.drop_rate * rate))
         x = relu_drop(self.conv1(x), 0.5)
@@ -73,11 +75,10 @@ class LeNet5Dropout(LeNet5):
 
 
 # %%
-def train(model, loader, epochs=1, print_every=50, **kwargs):
+def train(model: nn.Module, loader: DataLoader, epochs: int = 1, **kwargs: Any) -> None:
     model.train()
     optimizer = torch.optim.Adam(model.parameters(), **kwargs)
     for epoch in range(epochs):
-        # print("epoch\tbatch\t\ttraining loss")
         for _batch, (samples, targets) in tqdm(
             enumerate(loader), desc=f"Epoch {epoch + 1}/{epochs}"
         ):
@@ -86,11 +87,9 @@ def train(model, loader, epochs=1, print_every=50, **kwargs):
             loss = F.cross_entropy(output, targets)
             loss.backward()
             optimizer.step()
-            # if batch % print_every == 0:
-            #     print(f"{epoch + 1}/{epochs}\t{batch}/{len(loader)}\t\t{loss:.4}")
 
 
-def test(model, loader):
+def test(model: nn.Module, loader: DataLoader) -> None:
     model.eval()
     test_loss = correct = 0
     for data, targets in tqdm(loader, desc="Predicting on test set"):

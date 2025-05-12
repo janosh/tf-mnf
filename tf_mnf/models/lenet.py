@@ -1,3 +1,5 @@
+from typing import Any
+
 import tensorflow as tf
 from tensorflow.keras.layers import Conv2D, Dense, Flatten, MaxPool2D
 
@@ -5,7 +7,7 @@ from tensorflow.keras.layers import Conv2D, Dense, Flatten, MaxPool2D
 class LeNet(tf.keras.Sequential):
     """Just your regular LeNet."""
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any) -> None:
         c1 = Conv2D(
             filters=32,
             kernel_size=(5, 5),
